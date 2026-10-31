@@ -1,0 +1,4267 @@
+{
+ "export_format": "airport-negotiation-session/1",
+ "scenario": {
+  "scenario_id": "scn-005aba12",
+  "scenario_version": "af1df3e57f82",
+  "demo_preset": true,
+  "airport": "ATL",
+  "note": "times are simulated minutes from scenario start (t+N); not historical actual times"
+ },
+ "session": {
+  "session_id": "scripted-demo",
+  "mode": "scripted",
+  "model": "scripted-policy",
+  "live_model_calls": false,
+  "elapsed_s": 0.7,
+  "deadline_s": 600.0,
+  "turns_completed": 3,
+  "messages": 9
+ },
+ "selected_historical_disruption": {
+  "flight_date": "2015-01-01",
+  "airline_code": "DL",
+  "airline_name": null,
+  "flight_number": 1205,
+  "tail_number": "N612DL",
+  "origin_code": "PHX",
+  "origin_name": "Phoenix Sky Harbor International Airport",
+  "destination_code": "ATL",
+  "destination_name": "Hartsfield-Jackson Atlanta International Airport",
+  "scheduled_departure": "06:00",
+  "actual_departure": "08:04",
+  "scheduled_arrival": "11:27",
+  "actual_arrival": "13:14",
+  "departure_delay_min": 124,
+  "arrival_delay_min": 107,
+  "weather_delay_min": 107,
+  "late_aircraft_delay_min": 0,
+  "air_system_delay_min": 0,
+  "airline_delay_min": 0,
+  "security_delay_min": 0,
+  "distance_mi": 1587,
+  "cancelled": false,
+  "diverted": false
+ },
+ "initial_reference_plan": {
+  "plan": {
+   "proposal_id": "prop-1763015b0e",
+   "scenario_version": "af1df3e57f82",
+   "source": "reference",
+   "decision_time_min": 0.0,
+   "flights": [
+    {
+     "flight_id": "DL1205",
+     "runway_id": "RWY-1",
+     "landing_min": 22.0,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-C",
+      "TWY-G1"
+     ],
+     "taxi_start_min": 23.5,
+     "taxi_end_min": 32.5,
+     "gate_id": "GATE-1",
+     "gate_in_min": 32.5,
+     "service_start_min": 37.5,
+     "service_end_min": 77.5,
+     "ground_crew_id": "GC-1",
+     "flight_crew_id": "FC-DL1205"
+    },
+    {
+     "flight_id": "SIM-A101",
+     "runway_id": "RWY-1",
+     "landing_min": 22.0,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-C",
+      "TWY-G2"
+     ],
+     "taxi_start_min": 23.5,
+     "taxi_end_min": 32.5,
+     "gate_id": "GATE-2",
+     "gate_in_min": 32.5,
+     "service_start_min": 37.5,
+     "service_end_min": 77.5,
+     "ground_crew_id": "GC-2",
+     "flight_crew_id": "FC-SIM-A101"
+    },
+    {
+     "flight_id": "SIM-B202",
+     "runway_id": "RWY-1",
+     "landing_min": 23.0,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-C",
+      "TWY-G3"
+     ],
+     "taxi_start_min": 24.5,
+     "taxi_end_min": 32.5,
+     "gate_id": "GATE-3",
+     "gate_in_min": 32.5,
+     "service_start_min": 37.5,
+     "service_end_min": 77.5,
+     "ground_crew_id": "GC-1",
+     "flight_crew_id": "FC-SIM-B202"
+    }
+   ]
+  },
+  "validation": {
+   "passed": false,
+   "n_checks": 68,
+   "failed": [
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205 (t+22.0) and SIM-A101 (t+22.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205 (t+22.0) and SIM-B202 (t+23.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "SIM-A101 (t+22.0) and SIM-B202 (t+23.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205(Large) -> SIM-A101(Heavy) on RWY-1: gap 0s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205(Large) -> SIM-B202(Large) on RWY-1: gap 60s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "SIM-A101(Heavy) -> SIM-B202(Large) on RWY-1: gap 60s, required 129s [Heavy->Large: 5 nm @ 140 kt = 129s; workbook floor 120s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "GATE-OVERLAP",
+     "passed": false,
+     "flight_id": "DL1205",
+     "resource_id": "GATE-1",
+     "explanation": "gate GATE-1: DEMO: resident aircraft on the selected flight's original gate t+0.0..50.0 overlaps DL1205 t+32.5..77.5 (buffer 5 min)",
+     "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "GC-1",
+     "explanation": "ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-A101 t+23.5..28.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: SIM-A101 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: DL1205 t+28.5..30.5 overlaps SIM-A101 t+28.5..30.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: DL1205 t+28.5..30.5 overlaps SIM-B202 t+29.5..31.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: SIM-A101 t+28.5..30.5 overlaps SIM-B202 t+29.5..31.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "TWY-C used t+29.5..+31.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    }
+   ],
+   "results": [
+    {
+     "constraint_id": "PLAN-VERSION",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": null,
+     "explanation": "plan scenario_version 'af1df3e57f82' vs scenario 'af1df3e57f82'",
+     "basis": "structural"
+    },
+    {
+     "constraint_id": "PLAN-COMPLETE",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": null,
+     "explanation": "all 3 flights planned once",
+     "basis": "structural"
+    },
+    {
+     "constraint_id": "LAND-EARLIEST",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "landing t+22.0 min vs earliest t+22.0 min",
+     "basis": "simulated: SimFlight.earliest_landing_min"
+    },
+    {
+     "constraint_id": "RWY-AVAIL",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": "RWY-1",
+     "explanation": "RWY-1 open for roll-out t+22.0..+23.5",
+     "basis": "simulated: runway closures"
+    },
+    {
+     "constraint_id": "LAND-EARLIEST",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "landing t+22.0 min vs earliest t+22.0 min",
+     "basis": "simulated: SimFlight.earliest_landing_min"
+    },
+    {
+     "constraint_id": "RWY-AVAIL",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": "RWY-1",
+     "explanation": "RWY-1 open for roll-out t+22.0..+23.5",
+     "basis": "simulated: runway closures"
+    },
+    {
+     "constraint_id": "LAND-EARLIEST",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "landing t+23.0 min vs earliest t+23.0 min",
+     "basis": "simulated: SimFlight.earliest_landing_min"
+    },
+    {
+     "constraint_id": "RWY-AVAIL",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "RWY-1 open for roll-out t+23.0..+24.5",
+     "basis": "simulated: runway closures"
+    },
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205 (t+22.0) and SIM-A101 (t+22.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205 (t+22.0) and SIM-B202 (t+23.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "RWY-OCC",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "SIM-A101 (t+22.0) and SIM-B202 (t+23.0) overlap on RWY-1; occupancy 1.5 min",
+     "basis": "assumption: runway_occupancy_min"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205(Large) -> SIM-A101(Heavy) on RWY-1: gap 0s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "DL1205(Large) -> SIM-B202(Large) on RWY-1: gap 60s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "WAKE-SEP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "RWY-1",
+     "explanation": "SIM-A101(Heavy) -> SIM-B202(Large) on RWY-1: gap 60s, required 129s [Heavy->Large: 5 nm @ 140 kt = 129s; workbook floor 120s]",
+     "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+    },
+    {
+     "constraint_id": "RWY-CAP-AIRPORT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "ATL",
+     "explanation": "max 3 movement(s) in any 60-min window vs airport limit 90/h (modelled flights only)",
+     "basis": "workbook: airport_capacity.max_runway_ops_per_hour (read as airport-wide)"
+    },
+    {
+     "constraint_id": "RWY-CAP-RUNWAY",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "RWY-1",
+     "explanation": "RWY-1: max 3 movement(s) in any 60-min window vs assumed share 22/h (mode even_split)",
+     "basis": "assumption: per_runway_share_mode (even_split | fixed | disabled)"
+    },
+    {
+     "constraint_id": "FUEL-RESERVE",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "landing fuel 1566 kg after 0.0 min hold @ 2400 kg/h vs final reserve 1200 kg (30 min)",
+     "basis": "workbook: Final fuel reserve, Holding fuel burn"
+    },
+    {
+     "constraint_id": "FUEL-CONTINGENCY",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "landing fuel 1566 kg vs reserve+contingency 1246 kg (contingency 46 kg = 5% of trip 917 kg)",
+     "basis": "workbook: Contingency fuel (5% trip)"
+    },
+    {
+     "constraint_id": "FUEL-RESERVE",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "landing fuel 7712 kg after 0.0 min hold @ 6500 kg/h vs final reserve 3250 kg (30 min)",
+     "basis": "workbook: Final fuel reserve, Holding fuel burn"
+    },
+    {
+     "constraint_id": "FUEL-CONTINGENCY",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "landing fuel 7712 kg vs reserve+contingency 3378 kg (contingency 128 kg = 5% of trip 2567 kg)",
+     "basis": "workbook: Contingency fuel (5% trip)"
+    },
+    {
+     "constraint_id": "FUEL-RESERVE",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "landing fuel 2848 kg after 0.0 min hold @ 2400 kg/h vs final reserve 1200 kg (30 min)",
+     "basis": "workbook: Final fuel reserve, Holding fuel burn"
+    },
+    {
+     "constraint_id": "FUEL-CONTINGENCY",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "landing fuel 2848 kg vs reserve+contingency 1248 kg (contingency 48 kg = 5% of trip 958 kg)",
+     "basis": "workbook: Contingency fuel (5% trip)"
+    },
+    {
+     "constraint_id": "SEQ-ORDER",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "landing t+22.0 < taxi t+23.5..32.5 < service t+37.5..77.5",
+     "basis": "structural + assumption"
+    },
+    {
+     "constraint_id": "TAXI-ROUTE",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "TWY-A1 > TWY-C > TWY-G1 connects RWY-1 to GATE-1",
+     "basis": "simulated: taxi graph"
+    },
+    {
+     "constraint_id": "TAXI-TIME",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "taxi duration 9.0 min vs route time 9.0 min",
+     "basis": "simulated: segment minutes"
+    },
+    {
+     "constraint_id": "GATE-COMPAT",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": "GATE-1",
+     "explanation": "narrowbody (Large) at GATE-1 (max narrowbody)",
+     "basis": "simulated: gate max_aircraft_class"
+    },
+    {
+     "constraint_id": "TURNAROUND-MIN",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "gate time 45.0 min vs ATL minimum 45 min",
+     "basis": "workbook: airport_capacity.min_turnaround_min"
+    },
+    {
+     "constraint_id": "TASK-TIME",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "service t+37.5..77.5 (40.0 min) vs deboard 5 min after gate arrival + task 40 min",
+     "basis": "assumption: deboard_min + simulated service_task_min"
+    },
+    {
+     "constraint_id": "CREW-FLIGHT-DUTY",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": "FC-DL1205",
+     "explanation": "FC-DL1205 duty ends t+47.5 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+     "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+    },
+    {
+     "constraint_id": "CREW-GROUND-AVAIL",
+     "passed": true,
+     "flight_id": "DL1205",
+     "resource_id": "GC-1",
+     "explanation": "GC-1 service starts t+37.5, available from t+15.0",
+     "basis": "simulated: available_from_min"
+    },
+    {
+     "constraint_id": "SEQ-ORDER",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "landing t+22.0 < taxi t+23.5..32.5 < service t+37.5..77.5",
+     "basis": "structural + assumption"
+    },
+    {
+     "constraint_id": "TAXI-ROUTE",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "TWY-A1 > TWY-C > TWY-G2 connects RWY-1 to GATE-2",
+     "basis": "simulated: taxi graph"
+    },
+    {
+     "constraint_id": "TAXI-TIME",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "taxi duration 9.0 min vs route time 9.0 min",
+     "basis": "simulated: segment minutes"
+    },
+    {
+     "constraint_id": "GATE-COMPAT",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": "GATE-2",
+     "explanation": "widebody (Heavy) at GATE-2 (max widebody)",
+     "basis": "simulated: gate max_aircraft_class"
+    },
+    {
+     "constraint_id": "TURNAROUND-MIN",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "gate time 45.0 min vs ATL minimum 45 min",
+     "basis": "workbook: airport_capacity.min_turnaround_min"
+    },
+    {
+     "constraint_id": "TASK-TIME",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "service t+37.5..77.5 (40.0 min) vs deboard 5 min after gate arrival + task 28 min",
+     "basis": "assumption: deboard_min + simulated service_task_min"
+    },
+    {
+     "constraint_id": "CREW-FLIGHT-DUTY",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": "FC-SIM-A101",
+     "explanation": "FC-SIM-A101 duty ends t+47.5 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+     "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+    },
+    {
+     "constraint_id": "CREW-GROUND-AVAIL",
+     "passed": true,
+     "flight_id": "SIM-A101",
+     "resource_id": "GC-2",
+     "explanation": "GC-2 service starts t+37.5, available from t+0.0",
+     "basis": "simulated: available_from_min"
+    },
+    {
+     "constraint_id": "SEQ-ORDER",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "landing t+23.0 < taxi t+24.5..32.5 < service t+37.5..77.5",
+     "basis": "structural + assumption"
+    },
+    {
+     "constraint_id": "TAXI-ROUTE",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "TWY-A1 > TWY-C > TWY-G3 connects RWY-1 to GATE-3",
+     "basis": "simulated: taxi graph"
+    },
+    {
+     "constraint_id": "TAXI-TIME",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "taxi duration 8.0 min vs route time 8.0 min",
+     "basis": "simulated: segment minutes"
+    },
+    {
+     "constraint_id": "GATE-COMPAT",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": "GATE-3",
+     "explanation": "narrowbody (Large) at GATE-3 (max narrowbody)",
+     "basis": "simulated: gate max_aircraft_class"
+    },
+    {
+     "constraint_id": "TURNAROUND-MIN",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "gate time 45.0 min vs ATL minimum 45 min",
+     "basis": "workbook: airport_capacity.min_turnaround_min"
+    },
+    {
+     "constraint_id": "TASK-TIME",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "service t+37.5..77.5 (40.0 min) vs deboard 5 min after gate arrival + task 35 min",
+     "basis": "assumption: deboard_min + simulated service_task_min"
+    },
+    {
+     "constraint_id": "CREW-FLIGHT-DUTY",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": "FC-SIM-B202",
+     "explanation": "FC-SIM-B202 duty ends t+47.5 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+     "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+    },
+    {
+     "constraint_id": "CREW-GROUND-AVAIL",
+     "passed": true,
+     "flight_id": "SIM-B202",
+     "resource_id": "GC-1",
+     "explanation": "GC-1 service starts t+37.5, available from t+15.0",
+     "basis": "simulated: available_from_min"
+    },
+    {
+     "constraint_id": "CREW-GROUND-SHIFT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "GC-1",
+     "explanation": "GC-1 shift ends t+90.0; last job ends t+77.5: overtime 0.0 min (cap 120, billed 1.5x)",
+     "basis": "workbook: fuel_and_crew.Ground crew shift + assumption: max_ground_overtime_min"
+    },
+    {
+     "constraint_id": "CREW-GROUND-SHIFT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "GC-2",
+     "explanation": "GC-2 shift ends t+200.0; last job ends t+77.5: overtime 0.0 min (cap 120, billed 1.5x)",
+     "basis": "workbook: fuel_and_crew.Ground crew shift + assumption: max_ground_overtime_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "FC-DL1205",
+     "explanation": "flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "FC-SIM-A101",
+     "explanation": "flight_crew FC-SIM-A101: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "FC-SIM-B202",
+     "explanation": "flight_crew FC-SIM-B202: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "GATE-OVERLAP",
+     "passed": false,
+     "flight_id": "DL1205",
+     "resource_id": "GATE-1",
+     "explanation": "gate GATE-1: DEMO: resident aircraft on the selected flight's original gate t+0.0..50.0 overlaps DL1205 t+32.5..77.5 (buffer 5 min)",
+     "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+    },
+    {
+     "constraint_id": "GATE-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "GATE-2",
+     "explanation": "gate GATE-2: 1 interval(s), no overlap (buffer 5 min)",
+     "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+    },
+    {
+     "constraint_id": "GATE-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "GATE-3",
+     "explanation": "gate GATE-3: 1 interval(s), no overlap (buffer 5 min)",
+     "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "GC-1",
+     "explanation": "ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "CREW-OVERLAP",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "GC-2",
+     "explanation": "ground_crew GC-2: 1 interval(s), no overlap (buffer 5 min)",
+     "basis": "simulated + assumption: ground_crew_transfer_min"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-A101 t+23.5..28.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-A1",
+     "explanation": "taxi_segment TWY-A1: SIM-A101 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: DL1205 t+28.5..30.5 overlaps SIM-A101 t+28.5..30.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: DL1205 t+28.5..30.5 overlaps SIM-B202 t+29.5..31.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": "TWY-C",
+     "explanation": "taxi_segment TWY-C: SIM-A101 t+28.5..30.5 overlaps SIM-B202 t+29.5..31.5 (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "TWY-G1",
+     "explanation": "taxi_segment TWY-G1: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "TWY-G2",
+     "explanation": "taxi_segment TWY-G2: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-CONFLICT",
+     "passed": true,
+     "flight_id": null,
+     "resource_id": "TWY-G3",
+     "explanation": "taxi_segment TWY-G3: 1 interval(s), no overlap (buffer 0 min)",
+     "basis": "assumption: single-lane segments"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "DL1205",
+     "resource_id": null,
+     "explanation": "TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "SIM-A101",
+     "resource_id": null,
+     "explanation": "TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    },
+    {
+     "constraint_id": "TAXI-BLOCK",
+     "passed": false,
+     "flight_id": "SIM-B202",
+     "resource_id": null,
+     "explanation": "TWY-C used t+29.5..+31.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+     "basis": "simulated: taxiway blockages"
+    }
+   ]
+  },
+  "note": "simulated baseline, not the historical actual outcome"
+ },
+ "messages": [
+  {
+   "message_id": "scripted-demo-m1",
+   "session_id": "scripted-demo",
+   "seq": 1,
+   "turn": 1,
+   "sender": "ATC",
+   "scenario_version": "af1df3e57f82",
+   "type": "PROPOSE",
+   "proposal_id": "prop-6385daa8ab",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "WAKE_SEPARATION"
+   ],
+   "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+   "conditions": [
+    {
+     "field": "weighted_landing_delay",
+     "op": "<=",
+     "value": 16.07,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [],
+   "conditions_resolved": null,
+   "tradeoff": null,
+   "plan": {
+    "proposal_id": "prop-6385daa8ab",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G1"
+      ],
+      "taxi_start_min": 46.0,
+      "taxi_end_min": 55.0,
+      "gate_id": "GATE-1",
+      "gate_in_min": 55.0,
+      "service_start_min": 83.5,
+      "service_end_min": 123.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 33.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 33.5,
+      "service_start_min": 38.5,
+      "service_end_min": 78.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 24.142857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 37.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 37.5,
+      "service_start_min": 42.5,
+      "service_end_min": 82.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "plan_origin": "materialised_from_spec",
+   "plan_digest": "deea3cecc3774691",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m2",
+   "session_id": "scripted-demo",
+   "seq": 2,
+   "turn": 1,
+   "sender": "PILOT",
+   "scenario_version": "af1df3e57f82",
+   "type": "COUNTER_PROPOSE",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": "prop-6385daa8ab",
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "CONNECTION_PRESERVATION",
+    "FUEL_LIMIT"
+   ],
+   "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+   "conditions": [
+    {
+     "field": "landing_delay_min",
+     "op": "<=",
+     "value": 3.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "connection_miss_min",
+     "op": "<=",
+     "value": 5.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "contingency_margin_kg",
+     "op": ">=",
+     "value": 240.0,
+     "flight_id": "DL1205"
+    }
+   ],
+   "condition_results": [],
+   "conditions_resolved": null,
+   "tradeoff": {
+    "metric": "landing_delay_min",
+    "flight_id": "DL1205",
+    "before": 3.6428571428571423,
+    "after": 0.0,
+    "because": "DELAY_MINIMISATION"
+   },
+   "plan": {
+    "proposal_id": "prop-00e04bb086",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 32.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 23.5,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 38.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G1"
+      ],
+      "taxi_start_min": 46.0,
+      "taxi_end_min": 55.0,
+      "gate_id": "GATE-1",
+      "gate_in_min": 55.0,
+      "service_start_min": 82.5,
+      "service_end_min": 117.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "plan_origin": "materialised_from_spec",
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m3",
+   "session_id": "scripted-demo",
+   "seq": 3,
+   "turn": 1,
+   "sender": "GROUND",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: prop-00e04bb086 is within my stated limits.",
+   "conditions": [
+    {
+     "field": "ground_overtime_min",
+     "op": "<=",
+     "value": 20.0,
+     "flight_id": null
+    },
+    {
+     "field": "total_service_wait_min",
+     "op": "<=",
+     "value": 25.0,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "ground_overtime_min",
+      "op": "<=",
+      "value": 20.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "total_service_wait_min",
+      "op": "<=",
+      "value": 25.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 22.5
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m4",
+   "session_id": "scripted-demo",
+   "seq": 4,
+   "turn": 2,
+   "sender": "ATC",
+   "scenario_version": "af1df3e57f82",
+   "type": "COUNTER_PROPOSE",
+   "proposal_id": "prop-c34435a576",
+   "referenced_proposal_id": "prop-00e04bb086",
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "WAKE_SEPARATION"
+   ],
+   "explanation": "ATC: counter to prop-00e04bb086; total_cost 106.2 -> 105.2. Keeping other agents' stated limits where possible.",
+   "conditions": [
+    {
+     "field": "weighted_landing_delay",
+     "op": "<=",
+     "value": 16.07,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [],
+   "conditions_resolved": null,
+   "tradeoff": {
+    "metric": "total_cost",
+    "flight_id": null,
+    "before": 106.215,
+    "after": 105.215,
+    "because": "DELAY_MINIMISATION"
+   },
+   "plan": {
+    "proposal_id": "prop-c34435a576",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 32.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 23.5,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 38.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 74.5,
+      "taxi_end_min": 82.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 82.5,
+      "service_start_min": 87.5,
+      "service_end_min": 127.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "plan_origin": "materialised_from_spec",
+   "plan_digest": "b4920c3c1d15f9b0",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m5",
+   "session_id": "scripted-demo",
+   "seq": 5,
+   "turn": 2,
+   "sender": "PILOT",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "PILOT: existing proposal prop-00e04bb086 is the best plan meeting everyone's stated conditions.",
+   "conditions": [
+    {
+     "field": "landing_delay_min",
+     "op": "<=",
+     "value": 3.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "connection_miss_min",
+     "op": "<=",
+     "value": 5.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "contingency_margin_kg",
+     "op": ">=",
+     "value": 240.0,
+     "flight_id": "DL1205"
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "landing_delay_min",
+      "op": "<=",
+      "value": 3.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "connection_miss_min",
+      "op": "<=",
+      "value": 5.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "contingency_margin_kg",
+      "op": ">=",
+      "value": 240.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 320.0
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m6",
+   "session_id": "scripted-demo",
+   "seq": 6,
+   "turn": 2,
+   "sender": "GROUND",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-c34435a576",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: existing proposal prop-c34435a576 is the best plan meeting everyone's stated conditions.",
+   "conditions": [
+    {
+     "field": "ground_overtime_min",
+     "op": "<=",
+     "value": 20.0,
+     "flight_id": null
+    },
+    {
+     "field": "total_service_wait_min",
+     "op": "<=",
+     "value": 25.0,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "ground_overtime_min",
+      "op": "<=",
+      "value": 20.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "total_service_wait_min",
+      "op": "<=",
+      "value": 25.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 0.0
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "b4920c3c1d15f9b0",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m7",
+   "session_id": "scripted-demo",
+   "seq": 7,
+   "turn": 3,
+   "sender": "ATC",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "ATC: frozen plan meets all my stated conditions.",
+   "conditions": [
+    {
+     "field": "weighted_landing_delay",
+     "op": "<=",
+     "value": 16.07,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "weighted_landing_delay",
+      "op": "<=",
+      "value": 16.07,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 15.4286
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m8",
+   "session_id": "scripted-demo",
+   "seq": 8,
+   "turn": 3,
+   "sender": "PILOT",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "PILOT: frozen plan meets all my stated conditions.",
+   "conditions": [
+    {
+     "field": "landing_delay_min",
+     "op": "<=",
+     "value": 3.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "connection_miss_min",
+     "op": "<=",
+     "value": 5.0,
+     "flight_id": "DL1205"
+    },
+    {
+     "field": "contingency_margin_kg",
+     "op": ">=",
+     "value": 240.0,
+     "flight_id": "DL1205"
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "landing_delay_min",
+      "op": "<=",
+      "value": 3.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "connection_miss_min",
+      "op": "<=",
+      "value": 5.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "contingency_margin_kg",
+      "op": ">=",
+      "value": 240.0,
+      "flight_id": "DL1205"
+     },
+     "satisfied": true,
+     "observed": 320.0
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  },
+  {
+   "message_id": "scripted-demo-m9",
+   "session_id": "scripted-demo",
+   "seq": 9,
+   "turn": 3,
+   "sender": "GROUND",
+   "scenario_version": "af1df3e57f82",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "referenced_proposal_id": null,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: frozen plan meets all my stated conditions.",
+   "conditions": [
+    {
+     "field": "ground_overtime_min",
+     "op": "<=",
+     "value": 20.0,
+     "flight_id": null
+    },
+    {
+     "field": "total_service_wait_min",
+     "op": "<=",
+     "value": 25.0,
+     "flight_id": null
+    }
+   ],
+   "condition_results": [
+    {
+     "condition": {
+      "field": "ground_overtime_min",
+      "op": "<=",
+      "value": 20.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 0.0
+    },
+    {
+     "condition": {
+      "field": "total_service_wait_min",
+      "op": "<=",
+      "value": 25.0,
+      "flight_id": null
+     },
+     "satisfied": true,
+     "observed": 22.5
+    }
+   ],
+   "conditions_resolved": true,
+   "tradeoff": null,
+   "plan": null,
+   "plan_origin": null,
+   "plan_digest": "51f89a59e3d3d61d",
+   "outdated": false
+  }
+ ],
+ "proposal_versions": [
+  {
+   "proposal_id": "prop-6385daa8ab",
+   "version_no": 1,
+   "proposer": "ATC",
+   "turn": 1,
+   "seq": 1,
+   "referenced_proposal_id": null,
+   "digest": "deea3cecc3774691",
+   "origin": "materialised_from_spec",
+   "plan": {
+    "proposal_id": "prop-6385daa8ab",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G1"
+      ],
+      "taxi_start_min": 46.0,
+      "taxi_end_min": 55.0,
+      "gate_id": "GATE-1",
+      "gate_in_min": 55.0,
+      "service_start_min": 83.5,
+      "service_end_min": 123.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 33.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 33.5,
+      "service_start_min": 38.5,
+      "service_end_min": 78.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 24.142857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 37.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 37.5,
+      "service_start_min": 42.5,
+      "service_end_min": 82.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "validation": {
+    "passed": true,
+    "n_checks": 63,
+    "failed": []
+   },
+   "metrics": {
+    "flights": {
+     "DL1205": {
+      "landing_delay_min": 3.6428571428571423,
+      "landing_min": 25.642857142857142,
+      "gate_in_min": 55.0,
+      "service_start_min": 83.5,
+      "service_end_min": 123.5,
+      "service_wait_min": 23.5,
+      "reserve_margin_kg": 220.1190476190477,
+      "contingency_margin_kg": 174.28571428571436,
+      "connection_miss_min": 21.0,
+      "gate_id": "GATE-1",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 2
+     },
+     "SIM-A101": {
+      "landing_delay_min": 0.0,
+      "landing_min": 22.0,
+      "gate_in_min": 33.5,
+      "service_start_min": 38.5,
+      "service_end_min": 78.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 4461.666666666666,
+      "contingency_margin_kg": 4333.333333333333,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-2",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 5
+     },
+     "SIM-B202": {
+      "landing_delay_min": 1.1428571428571423,
+      "landing_min": 24.142857142857142,
+      "gate_in_min": 37.5,
+      "service_start_min": 42.5,
+      "service_end_min": 82.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 1602.2023809523807,
+      "contingency_margin_kg": 1554.285714285714,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-3",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-1",
+      "priority": 3
+     }
+    },
+    "plan": {
+     "max_landing_delay_min": 3.6428571428571423,
+     "total_landing_delay_min": 4.785714285714285,
+     "weighted_landing_delay": 10.714285714285712,
+     "total_service_wait_min": 23.5,
+     "ground_overtime_min": 0.0,
+     "gate_changes": 0.0,
+     "runway_changes": 0.0,
+     "total_cost": 57.357
+    }
+   }
+  },
+  {
+   "proposal_id": "prop-00e04bb086",
+   "version_no": 2,
+   "proposer": "PILOT",
+   "turn": 1,
+   "seq": 2,
+   "referenced_proposal_id": "prop-6385daa8ab",
+   "digest": "51f89a59e3d3d61d",
+   "origin": "materialised_from_spec",
+   "plan": {
+    "proposal_id": "prop-00e04bb086",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 32.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 23.5,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 38.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G1"
+      ],
+      "taxi_start_min": 46.0,
+      "taxi_end_min": 55.0,
+      "gate_id": "GATE-1",
+      "gate_in_min": 55.0,
+      "service_start_min": 82.5,
+      "service_end_min": 117.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "validation": {
+    "passed": true,
+    "n_checks": 65,
+    "failed": []
+   },
+   "metrics": {
+    "flights": {
+     "DL1205": {
+      "landing_delay_min": 0.0,
+      "landing_min": 22.0,
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 365.8333333333335,
+      "contingency_margin_kg": 320.00000000000017,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-3",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 2
+     },
+     "SIM-A101": {
+      "landing_delay_min": 1.5,
+      "landing_min": 23.5,
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 4299.166666666666,
+      "contingency_margin_kg": 4170.833333333333,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-2",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-1",
+      "priority": 5
+     },
+     "SIM-B202": {
+      "landing_delay_min": 2.6428571428571423,
+      "landing_min": 25.642857142857142,
+      "gate_in_min": 55.0,
+      "service_start_min": 82.5,
+      "service_end_min": 117.5,
+      "service_wait_min": 22.5,
+      "reserve_margin_kg": 1542.2023809523807,
+      "contingency_margin_kg": 1494.285714285714,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-1",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 3
+     }
+    },
+    "plan": {
+     "max_landing_delay_min": 2.6428571428571423,
+     "total_landing_delay_min": 4.142857142857142,
+     "weighted_landing_delay": 15.428571428571427,
+     "total_service_wait_min": 22.5,
+     "ground_overtime_min": 0.0,
+     "gate_changes": 2.0,
+     "runway_changes": 0.0,
+     "total_cost": 106.215
+    }
+   }
+  },
+  {
+   "proposal_id": "prop-c34435a576",
+   "version_no": 3,
+   "proposer": "ATC",
+   "turn": 2,
+   "seq": 4,
+   "referenced_proposal_id": "prop-00e04bb086",
+   "digest": "b4920c3c1d15f9b0",
+   "origin": "materialised_from_spec",
+   "plan": {
+    "proposal_id": "prop-c34435a576",
+    "scenario_version": "af1df3e57f82",
+    "source": "negotiation",
+    "decision_time_min": 0.0,
+    "flights": [
+     {
+      "flight_id": "DL1205",
+      "runway_id": "RWY-1",
+      "landing_min": 22.0,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 23.5,
+      "taxi_end_min": 32.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-DL1205"
+     },
+     {
+      "flight_id": "SIM-A101",
+      "runway_id": "RWY-1",
+      "landing_min": 23.5,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-D",
+       "TWY-G2"
+      ],
+      "taxi_start_min": 28.5,
+      "taxi_end_min": 38.5,
+      "gate_id": "GATE-2",
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "ground_crew_id": "GC-1",
+      "flight_crew_id": "FC-SIM-A101"
+     },
+     {
+      "flight_id": "SIM-B202",
+      "runway_id": "RWY-1",
+      "landing_min": 25.642857142857142,
+      "taxi_route": [
+       "TWY-A1",
+       "TWY-C",
+       "TWY-G3"
+      ],
+      "taxi_start_min": 74.5,
+      "taxi_end_min": 82.5,
+      "gate_id": "GATE-3",
+      "gate_in_min": 82.5,
+      "service_start_min": 87.5,
+      "service_end_min": 127.5,
+      "ground_crew_id": "GC-2",
+      "flight_crew_id": "FC-SIM-B202"
+     }
+    ]
+   },
+   "validation": {
+    "passed": true,
+    "n_checks": 63,
+    "failed": []
+   },
+   "metrics": {
+    "flights": {
+     "DL1205": {
+      "landing_delay_min": 0.0,
+      "landing_min": 22.0,
+      "gate_in_min": 32.5,
+      "service_start_min": 37.5,
+      "service_end_min": 77.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 365.8333333333335,
+      "contingency_margin_kg": 320.00000000000017,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-3",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 2
+     },
+     "SIM-A101": {
+      "landing_delay_min": 1.5,
+      "landing_min": 23.5,
+      "gate_in_min": 38.5,
+      "service_start_min": 43.5,
+      "service_end_min": 83.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 4299.166666666666,
+      "contingency_margin_kg": 4170.833333333333,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-2",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-1",
+      "priority": 5
+     },
+     "SIM-B202": {
+      "landing_delay_min": 2.6428571428571423,
+      "landing_min": 25.642857142857142,
+      "gate_in_min": 82.5,
+      "service_start_min": 87.5,
+      "service_end_min": 127.5,
+      "service_wait_min": 0.0,
+      "reserve_margin_kg": 1542.2023809523807,
+      "contingency_margin_kg": 1494.285714285714,
+      "connection_miss_min": 0.0,
+      "gate_id": "GATE-3",
+      "runway_id": "RWY-1",
+      "ground_crew_id": "GC-2",
+      "priority": 3
+     }
+    },
+    "plan": {
+     "max_landing_delay_min": 2.6428571428571423,
+     "total_landing_delay_min": 4.142857142857142,
+     "weighted_landing_delay": 15.428571428571427,
+     "total_service_wait_min": 0.0,
+     "ground_overtime_min": 0.0,
+     "gate_changes": 1.0,
+     "runway_changes": 0.0,
+     "total_cost": 105.215
+    }
+   }
+  }
+ ],
+ "structured_changes": {
+  "reference_plan_id": "prop-1763015b0e",
+  "final_plan_id": "prop-00e04bb086",
+  "final_kind": "agent consensus",
+  "lineage": [
+   {
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "version_no": 1,
+    "proposer": "ATC",
+    "seq": 1,
+    "referenced_proposal_id": null,
+    "valid": true
+   },
+   {
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "version_no": 2,
+    "proposer": "PILOT",
+    "seq": 2,
+    "referenced_proposal_id": "prop-6385daa8ab",
+    "valid": true
+   }
+  ],
+  "step_changes": [
+   {
+    "flight_id": "DL1205",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 22.0,
+    "after": 25.642857142857142,
+    "delta_min": 3.64,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 32.5,
+    "after": 55.0,
+    "delta_min": 22.5,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-1",
+    "after": "GC-2",
+    "delta_min": null,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 37.5,
+    "after": 83.5,
+    "delta_min": 46.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 77.5,
+    "after": 123.5,
+    "delta_min": 46.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 32.5,
+    "after": 33.5,
+    "delta_min": 1.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G2",
+    "after": "TWY-A1 > TWY-D > TWY-G2",
+    "delta_min": null,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 37.5,
+    "after": 38.5,
+    "delta_min": 1.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 77.5,
+    "after": 78.5,
+    "delta_min": 1.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 23.0,
+    "after": 24.142857142857142,
+    "delta_min": 1.14,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 32.5,
+    "after": 37.5,
+    "delta_min": 5.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G3",
+    "after": "TWY-A1 > TWY-D > TWY-G3",
+    "delta_min": null,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 37.5,
+    "after": 42.5,
+    "delta_min": 5.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 77.5,
+    "after": 82.5,
+    "delta_min": 5.0,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 25.642857142857142,
+    "after": 22.0,
+    "delta_min": -3.64,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 55.0,
+    "after": 32.5,
+    "delta_min": -22.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "gate_id",
+    "label": "Gate assignment",
+    "before": "GATE-1",
+    "after": "GATE-3",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G1",
+    "after": "TWY-A1 > TWY-D > TWY-G3",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 83.5,
+    "after": 37.5,
+    "delta_min": -46.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 123.5,
+    "after": 77.5,
+    "delta_min": -46.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 22.0,
+    "after": 23.5,
+    "delta_min": 1.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 33.5,
+    "after": 38.5,
+    "delta_min": 5.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-2",
+    "after": "GC-1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 38.5,
+    "after": 43.5,
+    "delta_min": 5.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 78.5,
+    "after": 83.5,
+    "delta_min": 5.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 24.142857142857142,
+    "after": 25.642857142857142,
+    "delta_min": 1.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 37.5,
+    "after": 55.0,
+    "delta_min": 17.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "gate_id",
+    "label": "Gate assignment",
+    "before": "GATE-3",
+    "after": "GATE-1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-D > TWY-G3",
+    "after": "TWY-A1 > TWY-C > TWY-G1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-1",
+    "after": "GC-2",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 42.5,
+    "after": 82.5,
+    "delta_min": 40.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 82.5,
+    "after": 117.5,
+    "delta_min": 35.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": ""
+   }
+  ],
+  "final_changes": [
+   {
+    "flight_id": "DL1205",
+    "field": "gate_id",
+    "label": "Gate assignment",
+    "before": "GATE-1",
+    "after": "GATE-3",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "GATE-OVERLAP",
+      "reference_result": "FAIL: gate GATE-1: DEMO: resident aircraft on the selected flight's original gate t+0.0..50.0 overlaps DL1205 t+32.5..77.5 (buffer 5 min)",
+      "final_result": "pass: gate GATE-1: 2 interval(s), no overlap (buffer 5 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G1",
+    "after": "TWY-A1 > TWY-D > TWY-G3",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "TAXI-BLOCK",
+      "reference_result": "FAIL: TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+      "final_result": "pass: route clear of blockages"
+     },
+     {
+      "constraint_id": "TAXI-CONFLICT",
+      "reference_result": "FAIL: taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-A101 t+23.5..28.5 (buffer 0 min)",
+      "final_result": "pass: taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "DL1205",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-1",
+    "after": "GC-2",
+    "delta_min": null,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [
+     {
+      "constraint_id": "CREW-OVERLAP",
+      "reference_result": "FAIL: ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+      "final_result": "pass: flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 22.0,
+    "after": 23.5,
+    "delta_min": 1.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "WAKE-SEP",
+      "reference_result": "FAIL: DL1205(Large) -> SIM-A101(Heavy) on RWY-1: gap 0s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+      "final_result": "pass: DL1205(Large) -> SIM-A101(Heavy) on RWY-1: gap 90s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]"
+     },
+     {
+      "constraint_id": "RWY-OCC",
+      "reference_result": "FAIL: DL1205 (t+22.0) and SIM-A101 (t+22.0) overlap on RWY-1; occupancy 1.5 min",
+      "final_result": "pass: 3 landing(s) on RWY-1 do not overlap"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 32.5,
+    "after": 38.5,
+    "delta_min": 6.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "TAXI-BLOCK",
+      "reference_result": "FAIL: TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+      "final_result": "pass: route clear of blockages"
+     },
+     {
+      "constraint_id": "TAXI-CONFLICT",
+      "reference_result": "FAIL: taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-A101 t+23.5..28.5 (buffer 0 min)",
+      "final_result": "pass: taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G2",
+    "after": "TWY-A1 > TWY-D > TWY-G2",
+    "delta_min": null,
+    "step": 0,
+    "proposal_id": "prop-6385daa8ab",
+    "proposed_by": "ATC",
+    "message_seq": 1,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "WAKE_SEPARATION"
+    ],
+    "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+    "evidence": [
+     {
+      "constraint_id": "TAXI-BLOCK",
+      "reference_result": "FAIL: TWY-C used t+28.5..+30.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+      "final_result": "pass: route clear of blockages"
+     },
+     {
+      "constraint_id": "TAXI-CONFLICT",
+      "reference_result": "FAIL: taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-A101 t+23.5..28.5 (buffer 0 min)",
+      "final_result": "pass: taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-2",
+    "after": "GC-1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": "objective trade-off between agents (no reference violation for this field)"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 37.5,
+    "after": 43.5,
+    "delta_min": 6.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": "objective trade-off between agents (no reference violation for this field)"
+   },
+   {
+    "flight_id": "SIM-A101",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 77.5,
+    "after": 83.5,
+    "delta_min": 6.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": "objective trade-off between agents (no reference violation for this field)"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "landing_min",
+    "label": "Landing / touchdown time (t+ min)",
+    "before": 23.0,
+    "after": 25.642857142857142,
+    "delta_min": 2.64,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "WAKE-SEP",
+      "reference_result": "FAIL: DL1205(Large) -> SIM-B202(Large) on RWY-1: gap 60s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+      "final_result": "pass: DL1205(Large) -> SIM-B202(Large) on RWY-1: gap 219s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]"
+     },
+     {
+      "constraint_id": "RWY-OCC",
+      "reference_result": "FAIL: DL1205 (t+22.0) and SIM-B202 (t+23.0) overlap on RWY-1; occupancy 1.5 min",
+      "final_result": "pass: 3 landing(s) on RWY-1 do not overlap"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "gate_in_min",
+    "label": "Gate arrival / on-block time (t+ min)",
+    "before": 32.5,
+    "after": 55.0,
+    "delta_min": 22.5,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "TAXI-BLOCK",
+      "reference_result": "FAIL: TWY-C used t+29.5..+31.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+      "final_result": "pass: route clear of blockages"
+     },
+     {
+      "constraint_id": "TAXI-CONFLICT",
+      "reference_result": "FAIL: taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+      "final_result": "pass: taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "gate_id",
+    "label": "Gate assignment",
+    "before": "GATE-3",
+    "after": "GATE-1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [],
+    "driver": "objective trade-off between agents (no reference violation for this field)"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "taxi_route",
+    "label": "Taxi route (modelled taxi graph)",
+    "before": "TWY-A1 > TWY-C > TWY-G3",
+    "after": "TWY-A1 > TWY-C > TWY-G1",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "TAXI-BLOCK",
+      "reference_result": "FAIL: TWY-C used t+29.5..+31.5 while blocked t+24.0..+40.0 (DEMO: taxiway blocked (simulated))",
+      "final_result": "pass: route clear of blockages"
+     },
+     {
+      "constraint_id": "TAXI-CONFLICT",
+      "reference_result": "FAIL: taxi_segment TWY-A1: DL1205 t+23.5..28.5 overlaps SIM-B202 t+24.5..29.5 (buffer 0 min)",
+      "final_result": "pass: taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "ground_crew_id",
+    "label": "Ground crew",
+    "before": "GC-1",
+    "after": "GC-2",
+    "delta_min": null,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "CREW-OVERLAP",
+      "reference_result": "FAIL: ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+      "final_result": "pass: flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_start_min",
+    "label": "Service start (t+ min)",
+    "before": 37.5,
+    "after": 82.5,
+    "delta_min": 45.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "CREW-OVERLAP",
+      "reference_result": "FAIL: ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+      "final_result": "pass: flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   },
+   {
+    "flight_id": "SIM-B202",
+    "field": "service_end_min",
+    "label": "Service end (t+ min)",
+    "before": 77.5,
+    "after": 117.5,
+    "delta_min": 40.0,
+    "step": 1,
+    "proposal_id": "prop-00e04bb086",
+    "proposed_by": "PILOT",
+    "message_seq": 2,
+    "reason_codes": [
+     "DELAY_MINIMISATION",
+     "CONNECTION_PRESERVATION",
+     "FUEL_LIMIT"
+    ],
+    "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+    "evidence": [
+     {
+      "constraint_id": "CREW-OVERLAP",
+      "reference_result": "FAIL: ground_crew GC-1: DL1205 t+37.5..77.5 overlaps SIM-B202 t+37.5..77.5 (buffer 5 min)",
+      "final_result": "pass: flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)"
+     }
+    ],
+    "driver": "constraint violation in the reference plan"
+   }
+  ],
+  "selected_flight": {
+   "flight_id": "DL1205",
+   "nominal_eta_min": 22.0,
+   "reference": {
+    "landing_min": 22.0,
+    "gate_arrival_min": 32.5,
+    "gate": "GATE-1",
+    "runway": "RWY-1",
+    "taxi_route": "TWY-A1 > TWY-C > TWY-G1"
+   },
+   "revised": {
+    "landing_min": 22.0,
+    "gate_arrival_min": 32.5,
+    "gate": "GATE-3",
+    "runway": "RWY-1",
+    "taxi_route": "TWY-A1 > TWY-D > TWY-G3"
+   },
+   "changed": {
+    "gate_id": [
+     "GATE-1",
+     "GATE-3"
+    ],
+    "taxi_route": [
+     "TWY-A1 > TWY-C > TWY-G1",
+     "TWY-A1 > TWY-D > TWY-G3"
+    ],
+    "ground_crew_id": [
+     "GC-1",
+     "GC-2"
+    ]
+   },
+   "proposed_by": {
+    "gate_id": "PILOT",
+    "taxi_route": "PILOT",
+    "ground_crew_id": "ATC"
+   },
+   "historical_context_only": {
+    "scheduled_arrival": "11:27",
+    "actual_arrival": "13:14",
+    "arrival_delay_min": 107,
+    "weather_delay_min": 107,
+    "late_aircraft_delay_min": 0,
+    "note": "dataset record; NOT the negotiated result and not 'recovered' by it"
+   }
+  },
+  "notes": [
+   "En-route flight-plan adjustments are not modelled; only landing, runway, taxi route, gate, crew and service times can change.",
+   "Reference/revised times are simulated minutes from scenario start; they are not the historical actual times."
+  ]
+ },
+ "freeze": {
+  "frozen_proposal_id": "prop-00e04bb086",
+  "rule": "Among proposals from turns 1-2 that pass full validation, rank by (1) most agents whose latest stated conditions are all satisfied by the plan, (2) fewest agents who rejected it, (3) most agents who accepted it with conditions resolved, (4) lowest fixed-weight total cost, (5) earliest version. Pick the first.",
+  "ranking": [
+   {
+    "proposal_id": "prop-00e04bb086",
+    "version_no": 2,
+    "proposer": "PILOT",
+    "support": 3,
+    "rejects": 0,
+    "accepts": 2,
+    "total_cost": 106.215
+   },
+   {
+    "proposal_id": "prop-c34435a576",
+    "version_no": 3,
+    "proposer": "ATC",
+    "support": 3,
+    "rejects": 0,
+    "accepts": 1,
+    "total_cost": 105.215
+   },
+   {
+    "proposal_id": "prop-6385daa8ab",
+    "version_no": 1,
+    "proposer": "ATC",
+    "support": 2,
+    "rejects": 0,
+    "accepts": 0,
+    "total_cost": 57.357
+   }
+  ]
+ },
+ "final_votes": [
+  {
+   "role": "ATC",
+   "seq": 7,
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "counted_as_accept": true,
+   "note": "accepted the frozen proposal"
+  },
+  {
+   "role": "PILOT",
+   "seq": 8,
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "counted_as_accept": true,
+   "note": "accepted the frozen proposal"
+  },
+  {
+   "role": "GROUND",
+   "seq": 9,
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "counted_as_accept": true,
+   "note": "accepted the frozen proposal"
+  }
+ ],
+ "final_validation": {
+  "passed": true,
+  "n_checks": 65,
+  "failed": [],
+  "results": [
+   {
+    "constraint_id": "PLAN-VERSION",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": null,
+    "explanation": "plan scenario_version 'af1df3e57f82' vs scenario 'af1df3e57f82'",
+    "basis": "structural"
+   },
+   {
+    "constraint_id": "PLAN-COMPLETE",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": null,
+    "explanation": "all 3 flights planned once",
+    "basis": "structural"
+   },
+   {
+    "constraint_id": "LAND-EARLIEST",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "landing t+22.0 min vs earliest t+22.0 min",
+    "basis": "simulated: SimFlight.earliest_landing_min"
+   },
+   {
+    "constraint_id": "RWY-AVAIL",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": "RWY-1",
+    "explanation": "RWY-1 open for roll-out t+22.0..+23.5",
+    "basis": "simulated: runway closures"
+   },
+   {
+    "constraint_id": "LAND-EARLIEST",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "landing t+23.5 min vs earliest t+22.0 min",
+    "basis": "simulated: SimFlight.earliest_landing_min"
+   },
+   {
+    "constraint_id": "RWY-AVAIL",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": "RWY-1",
+    "explanation": "RWY-1 open for roll-out t+23.5..+25.0",
+    "basis": "simulated: runway closures"
+   },
+   {
+    "constraint_id": "LAND-EARLIEST",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "landing t+25.6 min vs earliest t+23.0 min",
+    "basis": "simulated: SimFlight.earliest_landing_min"
+   },
+   {
+    "constraint_id": "RWY-AVAIL",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "RWY-1",
+    "explanation": "RWY-1 open for roll-out t+25.6..+27.1",
+    "basis": "simulated: runway closures"
+   },
+   {
+    "constraint_id": "RWY-OCC",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "RWY-1",
+    "explanation": "3 landing(s) on RWY-1 do not overlap",
+    "basis": "assumption: runway_occupancy_min"
+   },
+   {
+    "constraint_id": "WAKE-SEP",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": "RWY-1",
+    "explanation": "DL1205(Large) -> SIM-A101(Heavy) on RWY-1: gap 90s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+    "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+   },
+   {
+    "constraint_id": "WAKE-SEP",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "RWY-1",
+    "explanation": "DL1205(Large) -> SIM-B202(Large) on RWY-1: gap 219s, required 77s [Any other pair: 3 nm @ 140 kt = 77s; workbook floor 60s]",
+    "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+   },
+   {
+    "constraint_id": "WAKE-SEP",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "RWY-1",
+    "explanation": "SIM-A101(Heavy) -> SIM-B202(Large) on RWY-1: gap 129s, required 129s [Heavy->Large: 5 nm @ 140 kt = 129s; workbook floor 120s]",
+    "basis": "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"
+   },
+   {
+    "constraint_id": "RWY-CAP-AIRPORT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "ATL",
+    "explanation": "max 3 movement(s) in any 60-min window vs airport limit 90/h (modelled flights only)",
+    "basis": "workbook: airport_capacity.max_runway_ops_per_hour (read as airport-wide)"
+   },
+   {
+    "constraint_id": "RWY-CAP-RUNWAY",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "RWY-1",
+    "explanation": "RWY-1: max 3 movement(s) in any 60-min window vs assumed share 22/h (mode even_split)",
+    "basis": "assumption: per_runway_share_mode (even_split | fixed | disabled)"
+   },
+   {
+    "constraint_id": "FUEL-RESERVE",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "landing fuel 1566 kg after 0.0 min hold @ 2400 kg/h vs final reserve 1200 kg (30 min)",
+    "basis": "workbook: Final fuel reserve, Holding fuel burn"
+   },
+   {
+    "constraint_id": "FUEL-CONTINGENCY",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "landing fuel 1566 kg vs reserve+contingency 1246 kg (contingency 46 kg = 5% of trip 917 kg)",
+    "basis": "workbook: Contingency fuel (5% trip)"
+   },
+   {
+    "constraint_id": "FUEL-RESERVE",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "landing fuel 7549 kg after 1.5 min hold @ 6500 kg/h vs final reserve 3250 kg (30 min)",
+    "basis": "workbook: Final fuel reserve, Holding fuel burn"
+   },
+   {
+    "constraint_id": "FUEL-CONTINGENCY",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "landing fuel 7549 kg vs reserve+contingency 3378 kg (contingency 128 kg = 5% of trip 2567 kg)",
+    "basis": "workbook: Contingency fuel (5% trip)"
+   },
+   {
+    "constraint_id": "FUEL-RESERVE",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "landing fuel 2742 kg after 2.6 min hold @ 2400 kg/h vs final reserve 1200 kg (30 min)",
+    "basis": "workbook: Final fuel reserve, Holding fuel burn"
+   },
+   {
+    "constraint_id": "FUEL-CONTINGENCY",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "landing fuel 2742 kg vs reserve+contingency 1248 kg (contingency 48 kg = 5% of trip 958 kg)",
+    "basis": "workbook: Contingency fuel (5% trip)"
+   },
+   {
+    "constraint_id": "SEQ-ORDER",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "landing t+22.0 < taxi t+23.5..32.5 < service t+37.5..77.5",
+    "basis": "structural + assumption"
+   },
+   {
+    "constraint_id": "TAXI-ROUTE",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "TWY-A1 > TWY-D > TWY-G3 connects RWY-1 to GATE-3",
+    "basis": "simulated: taxi graph"
+   },
+   {
+    "constraint_id": "TAXI-TIME",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "taxi duration 9.0 min vs route time 9.0 min",
+    "basis": "simulated: segment minutes"
+   },
+   {
+    "constraint_id": "GATE-COMPAT",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": "GATE-3",
+    "explanation": "narrowbody (Large) at GATE-3 (max narrowbody)",
+    "basis": "simulated: gate max_aircraft_class"
+   },
+   {
+    "constraint_id": "GATE-NOTICE",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": "GATE-3",
+    "explanation": "gate changed GATE-1->GATE-3; notice 32.5 min before gate arrival vs required 20",
+    "basis": "workbook: fuel_and_crew.Gate change notice"
+   },
+   {
+    "constraint_id": "TURNAROUND-MIN",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "gate time 45.0 min vs ATL minimum 45 min",
+    "basis": "workbook: airport_capacity.min_turnaround_min"
+   },
+   {
+    "constraint_id": "TASK-TIME",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "service t+37.5..77.5 (40.0 min) vs deboard 5 min after gate arrival + task 40 min",
+    "basis": "assumption: deboard_min + simulated service_task_min"
+   },
+   {
+    "constraint_id": "CREW-FLIGHT-DUTY",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": "FC-DL1205",
+    "explanation": "FC-DL1205 duty ends t+47.5 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+    "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+   },
+   {
+    "constraint_id": "CREW-GROUND-AVAIL",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": "GC-2",
+    "explanation": "GC-2 service starts t+37.5, available from t+0.0",
+    "basis": "simulated: available_from_min"
+   },
+   {
+    "constraint_id": "SEQ-ORDER",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "landing t+23.5 < taxi t+28.5..38.5 < service t+43.5..83.5",
+    "basis": "structural + assumption"
+   },
+   {
+    "constraint_id": "TAXI-ROUTE",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "TWY-A1 > TWY-D > TWY-G2 connects RWY-1 to GATE-2",
+    "basis": "simulated: taxi graph"
+   },
+   {
+    "constraint_id": "TAXI-TIME",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "taxi duration 10.0 min vs route time 10.0 min",
+    "basis": "simulated: segment minutes"
+   },
+   {
+    "constraint_id": "GATE-COMPAT",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": "GATE-2",
+    "explanation": "widebody (Heavy) at GATE-2 (max widebody)",
+    "basis": "simulated: gate max_aircraft_class"
+   },
+   {
+    "constraint_id": "TURNAROUND-MIN",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "gate time 45.0 min vs ATL minimum 45 min",
+    "basis": "workbook: airport_capacity.min_turnaround_min"
+   },
+   {
+    "constraint_id": "TASK-TIME",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "service t+43.5..83.5 (40.0 min) vs deboard 5 min after gate arrival + task 28 min",
+    "basis": "assumption: deboard_min + simulated service_task_min"
+   },
+   {
+    "constraint_id": "CREW-FLIGHT-DUTY",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": "FC-SIM-A101",
+    "explanation": "FC-SIM-A101 duty ends t+53.5 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+    "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+   },
+   {
+    "constraint_id": "CREW-GROUND-AVAIL",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": "GC-1",
+    "explanation": "GC-1 service starts t+43.5, available from t+15.0",
+    "basis": "simulated: available_from_min"
+   },
+   {
+    "constraint_id": "SEQ-ORDER",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "landing t+25.6 < taxi t+46.0..55.0 < service t+82.5..117.5",
+    "basis": "structural + assumption"
+   },
+   {
+    "constraint_id": "TAXI-ROUTE",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "TWY-A1 > TWY-C > TWY-G1 connects RWY-1 to GATE-1",
+    "basis": "simulated: taxi graph"
+   },
+   {
+    "constraint_id": "TAXI-TIME",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "taxi duration 9.0 min vs route time 9.0 min",
+    "basis": "simulated: segment minutes"
+   },
+   {
+    "constraint_id": "GATE-COMPAT",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "GATE-1",
+    "explanation": "narrowbody (Large) at GATE-1 (max narrowbody)",
+    "basis": "simulated: gate max_aircraft_class"
+   },
+   {
+    "constraint_id": "GATE-NOTICE",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "GATE-1",
+    "explanation": "gate changed GATE-3->GATE-1; notice 55.0 min before gate arrival vs required 20",
+    "basis": "workbook: fuel_and_crew.Gate change notice"
+   },
+   {
+    "constraint_id": "TURNAROUND-MIN",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "gate time 62.5 min vs ATL minimum 45 min",
+    "basis": "workbook: airport_capacity.min_turnaround_min"
+   },
+   {
+    "constraint_id": "TASK-TIME",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "service t+82.5..117.5 (35.0 min) vs deboard 5 min after gate arrival + task 35 min",
+    "basis": "assumption: deboard_min + simulated service_task_min"
+   },
+   {
+    "constraint_id": "CREW-FLIGHT-DUTY",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "FC-SIM-B202",
+    "explanation": "FC-SIM-B202 duty ends t+70.0 (gate arrival + 15 min) vs limit t+250.0 (13 h from report)",
+    "basis": "workbook: fuel_and_crew.Flight crew max duty + assumption: flight_crew_postflight_min"
+   },
+   {
+    "constraint_id": "CREW-GROUND-AVAIL",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": "GC-2",
+    "explanation": "GC-2 service starts t+82.5, available from t+0.0",
+    "basis": "simulated: available_from_min"
+   },
+   {
+    "constraint_id": "CREW-GROUND-SHIFT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GC-1",
+    "explanation": "GC-1 shift ends t+90.0; last job ends t+83.5: overtime 0.0 min (cap 120, billed 1.5x)",
+    "basis": "workbook: fuel_and_crew.Ground crew shift + assumption: max_ground_overtime_min"
+   },
+   {
+    "constraint_id": "CREW-GROUND-SHIFT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GC-2",
+    "explanation": "GC-2 shift ends t+200.0; last job ends t+117.5: overtime 0.0 min (cap 120, billed 1.5x)",
+    "basis": "workbook: fuel_and_crew.Ground crew shift + assumption: max_ground_overtime_min"
+   },
+   {
+    "constraint_id": "CREW-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "FC-DL1205",
+    "explanation": "flight_crew FC-DL1205: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "simulated + assumption: ground_crew_transfer_min"
+   },
+   {
+    "constraint_id": "CREW-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "FC-SIM-A101",
+    "explanation": "flight_crew FC-SIM-A101: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "simulated + assumption: ground_crew_transfer_min"
+   },
+   {
+    "constraint_id": "CREW-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "FC-SIM-B202",
+    "explanation": "flight_crew FC-SIM-B202: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "simulated + assumption: ground_crew_transfer_min"
+   },
+   {
+    "constraint_id": "GATE-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GATE-1",
+    "explanation": "gate GATE-1: 2 interval(s), no overlap (buffer 5 min)",
+    "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+   },
+   {
+    "constraint_id": "GATE-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GATE-2",
+    "explanation": "gate GATE-2: 1 interval(s), no overlap (buffer 5 min)",
+    "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+   },
+   {
+    "constraint_id": "GATE-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GATE-3",
+    "explanation": "gate GATE-3: 1 interval(s), no overlap (buffer 5 min)",
+    "basis": "simulated: resident occupancy + assumption: gate_buffer_min"
+   },
+   {
+    "constraint_id": "CREW-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GC-1",
+    "explanation": "ground_crew GC-1: 1 interval(s), no overlap (buffer 5 min)",
+    "basis": "simulated + assumption: ground_crew_transfer_min"
+   },
+   {
+    "constraint_id": "CREW-OVERLAP",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "GC-2",
+    "explanation": "ground_crew GC-2: 2 interval(s), no overlap (buffer 5 min)",
+    "basis": "simulated + assumption: ground_crew_transfer_min"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-A1",
+    "explanation": "taxi_segment TWY-A1: 3 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-C",
+    "explanation": "taxi_segment TWY-C: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-D",
+    "explanation": "taxi_segment TWY-D: 2 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-G1",
+    "explanation": "taxi_segment TWY-G1: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-G2",
+    "explanation": "taxi_segment TWY-G2: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-CONFLICT",
+    "passed": true,
+    "flight_id": null,
+    "resource_id": "TWY-G3",
+    "explanation": "taxi_segment TWY-G3: 1 interval(s), no overlap (buffer 0 min)",
+    "basis": "assumption: single-lane segments"
+   },
+   {
+    "constraint_id": "TAXI-BLOCK",
+    "passed": true,
+    "flight_id": "DL1205",
+    "resource_id": null,
+    "explanation": "route clear of blockages",
+    "basis": "simulated: taxiway blockages"
+   },
+   {
+    "constraint_id": "TAXI-BLOCK",
+    "passed": true,
+    "flight_id": "SIM-A101",
+    "resource_id": null,
+    "explanation": "route clear of blockages",
+    "basis": "simulated: taxiway blockages"
+   },
+   {
+    "constraint_id": "TAXI-BLOCK",
+    "passed": true,
+    "flight_id": "SIM-B202",
+    "resource_id": null,
+    "explanation": "route clear of blockages",
+    "basis": "simulated: taxiway blockages"
+   }
+  ]
+ },
+ "outcome": {
+  "status": "AGENT_CONSENSUS",
+  "agent_consensus": true,
+  "final_plan_kind": "agent consensus",
+  "final_plan": {
+   "proposal_id": "prop-00e04bb086",
+   "scenario_version": "af1df3e57f82",
+   "source": "negotiation",
+   "decision_time_min": 0.0,
+   "flights": [
+    {
+     "flight_id": "DL1205",
+     "runway_id": "RWY-1",
+     "landing_min": 22.0,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-D",
+      "TWY-G3"
+     ],
+     "taxi_start_min": 23.5,
+     "taxi_end_min": 32.5,
+     "gate_id": "GATE-3",
+     "gate_in_min": 32.5,
+     "service_start_min": 37.5,
+     "service_end_min": 77.5,
+     "ground_crew_id": "GC-2",
+     "flight_crew_id": "FC-DL1205"
+    },
+    {
+     "flight_id": "SIM-A101",
+     "runway_id": "RWY-1",
+     "landing_min": 23.5,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-D",
+      "TWY-G2"
+     ],
+     "taxi_start_min": 28.5,
+     "taxi_end_min": 38.5,
+     "gate_id": "GATE-2",
+     "gate_in_min": 38.5,
+     "service_start_min": 43.5,
+     "service_end_min": 83.5,
+     "ground_crew_id": "GC-1",
+     "flight_crew_id": "FC-SIM-A101"
+    },
+    {
+     "flight_id": "SIM-B202",
+     "runway_id": "RWY-1",
+     "landing_min": 25.642857142857142,
+     "taxi_route": [
+      "TWY-A1",
+      "TWY-C",
+      "TWY-G1"
+     ],
+     "taxi_start_min": 46.0,
+     "taxi_end_min": 55.0,
+     "gate_id": "GATE-1",
+     "gate_in_min": 55.0,
+     "service_start_min": 82.5,
+     "service_end_min": 117.5,
+     "ground_crew_id": "GC-2",
+     "flight_crew_id": "FC-SIM-B202"
+    }
+   ]
+  },
+  "fallback_reason": null,
+  "fallback_detail": null,
+  "fallback_outcome": null,
+  "fallback_search_status": null,
+  "fallback_reasons": null,
+  "invalidation": null
+ },
+ "model_attempts": [
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "role": "ATC",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 3,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "role": "PILOT",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 5,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "role": "GROUND",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 1,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "role": "ATC",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 14,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "role": "PILOT",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 14,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "role": "GROUND",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 14,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "role": "ATC",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 1,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "role": "PILOT",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 1,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "role": "GROUND",
+   "attempt": 1,
+   "kind": "initial",
+   "outcome": "ok",
+   "latency_ms": 1,
+   "mode": "scripted",
+   "model": "scripted-policy",
+   "credential_mode": null,
+   "error": null,
+   "input_tokens": null,
+   "output_tokens": null
+  }
+ ],
+ "tool_calls": [
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "seq": 1,
+   "role": "ATC",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "ATC objective",
+    "options_returned": [
+     "prop-6385daa8ab",
+     "prop-fd96f1ff00",
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-c536e6a87a"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "seq": 1,
+   "role": "ATC",
+   "tool": "materialise_plan_spec",
+   "summary": {
+    "ok": true,
+    "proposal_id": "prop-6385daa8ab"
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "seq": 2,
+   "role": "PILOT",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "PILOT objective",
+    "options_returned": [
+     "prop-00e04bb086",
+     "prop-01d6e18269",
+     "prop-02f3aa6ff8",
+     "prop-03afa215d2",
+     "prop-043a047e29"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "seq": 2,
+   "role": "PILOT",
+   "tool": "materialise_plan_spec",
+   "summary": {
+    "ok": true,
+    "proposal_id": "prop-00e04bb086"
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 1,
+   "seq": 3,
+   "role": "GROUND",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "GROUND objective",
+    "options_returned": [
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-4f8318df04",
+     "prop-c536e6a87a",
+     "prop-f972d982f1"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "seq": 4,
+   "role": "ATC",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "ATC objective",
+    "options_returned": [
+     "prop-6385daa8ab",
+     "prop-fd96f1ff00",
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-c536e6a87a"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "seq": 4,
+   "role": "ATC",
+   "tool": "materialise_plan_spec",
+   "summary": {
+    "ok": true,
+    "proposal_id": "prop-c34435a576"
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "seq": 5,
+   "role": "PILOT",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "PILOT objective",
+    "options_returned": [
+     "prop-00e04bb086",
+     "prop-01d6e18269",
+     "prop-02f3aa6ff8",
+     "prop-03afa215d2",
+     "prop-043a047e29"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 2,
+   "seq": 6,
+   "role": "GROUND",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "GROUND objective",
+    "options_returned": [
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-4f8318df04",
+     "prop-c536e6a87a",
+     "prop-f972d982f1"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "seq": 7,
+   "role": "ATC",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "ATC objective",
+    "options_returned": [
+     "prop-6385daa8ab",
+     "prop-fd96f1ff00",
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-c536e6a87a"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "seq": 8,
+   "role": "PILOT",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "PILOT objective",
+    "options_returned": [
+     "prop-00e04bb086",
+     "prop-01d6e18269",
+     "prop-02f3aa6ff8",
+     "prop-03afa215d2",
+     "prop-043a047e29"
+    ]
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "turn": 3,
+   "seq": 9,
+   "role": "GROUND",
+   "tool": "option_menu",
+   "summary": {
+    "attempt": 1,
+    "advisory": true,
+    "ranked_by": "GROUND objective",
+    "options_returned": [
+     "prop-38e0f99240",
+     "prop-4e9223188a",
+     "prop-4f8318df04",
+     "prop-c536e6a87a",
+     "prop-f972d982f1"
+    ]
+   }
+  }
+ ],
+ "validation_events": [
+  {
+   "session_id": "scripted-demo",
+   "stage": "reference",
+   "proposal_id": "prop-1763015b0e",
+   "passed": false,
+   "n_checks": 68,
+   "failed_constraints": [
+    "CREW-OVERLAP",
+    "GATE-OVERLAP",
+    "RWY-OCC",
+    "TAXI-BLOCK",
+    "TAXI-CONFLICT",
+    "WAKE-SEP"
+   ]
+  },
+  {
+   "session_id": "scripted-demo",
+   "stage": "registration",
+   "proposal_id": "prop-6385daa8ab",
+   "passed": true,
+   "n_checks": 63,
+   "failed_constraints": []
+  },
+  {
+   "session_id": "scripted-demo",
+   "stage": "registration",
+   "proposal_id": "prop-00e04bb086",
+   "passed": true,
+   "n_checks": 65,
+   "failed_constraints": []
+  },
+  {
+   "session_id": "scripted-demo",
+   "stage": "registration",
+   "proposal_id": "prop-c34435a576",
+   "passed": true,
+   "n_checks": 63,
+   "failed_constraints": []
+  },
+  {
+   "session_id": "scripted-demo",
+   "stage": "freeze",
+   "proposal_id": "prop-00e04bb086",
+   "passed": true,
+   "n_checks": 65,
+   "failed_constraints": []
+  },
+  {
+   "session_id": "scripted-demo",
+   "stage": "final_revalidation",
+   "proposal_id": "prop-00e04bb086",
+   "passed": true,
+   "n_checks": 65,
+   "failed_constraints": []
+  }
+ ],
+ "decision_records": [
+  {
+   "session_id": "scripted-demo",
+   "seq": 1,
+   "sender": "ATC",
+   "type": "PROPOSE",
+   "proposal_id": "prop-6385daa8ab",
+   "previous_proposal_id": null,
+   "changed_preference": false,
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "WAKE_SEPARATION"
+   ],
+   "explanation": "ATC: proposing the plan minimising my objective (weighted_landing_delay=10.7).",
+   "declared_tradeoff": null,
+   "observed_delta": {}
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 2,
+   "sender": "PILOT",
+   "type": "COUNTER_PROPOSE",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": "prop-6385daa8ab",
+   "changed_preference": true,
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "CONNECTION_PRESERVATION",
+    "FUEL_LIMIT"
+   ],
+   "explanation": "PILOT: counter to prop-6385daa8ab; landing_delay_min 3.6 -> 0.0. prop-6385daa8ab breaks my limit(s): landing_delay_min[DL1205] <= 3.0 (observed 3.6429); connection_miss_min[DL1205] <= 5.0 (observed 21.0); contingency_margin_kg[DL1205] >= 240.0 (observed 174.2857). Keeping other agents' stated limits where possible.",
+   "declared_tradeoff": {
+    "metric": "landing_delay_min",
+    "flight_id": "DL1205",
+    "before": 3.6428571428571423,
+    "after": 0.0,
+    "because": "DELAY_MINIMISATION"
+   },
+   "observed_delta": {
+    "max_landing_delay_min": -1.0,
+    "total_landing_delay_min": -0.6429,
+    "weighted_landing_delay": 4.7143,
+    "total_service_wait_min": -1.0,
+    "ground_overtime_min": 0.0,
+    "gate_changes": 2.0,
+    "runway_changes": 0.0,
+    "total_cost": 48.858
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 3,
+   "sender": "GROUND",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": null,
+   "changed_preference": false,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: prop-00e04bb086 is within my stated limits.",
+   "declared_tradeoff": null,
+   "observed_delta": {}
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 4,
+   "sender": "ATC",
+   "type": "COUNTER_PROPOSE",
+   "proposal_id": "prop-c34435a576",
+   "previous_proposal_id": "prop-00e04bb086",
+   "changed_preference": true,
+   "reason_codes": [
+    "DELAY_MINIMISATION",
+    "WAKE_SEPARATION"
+   ],
+   "explanation": "ATC: counter to prop-00e04bb086; total_cost 106.2 -> 105.2. Keeping other agents' stated limits where possible.",
+   "declared_tradeoff": {
+    "metric": "total_cost",
+    "flight_id": null,
+    "before": 106.215,
+    "after": 105.215,
+    "because": "DELAY_MINIMISATION"
+   },
+   "observed_delta": {
+    "max_landing_delay_min": 0.0,
+    "total_landing_delay_min": 0.0,
+    "weighted_landing_delay": 0.0,
+    "total_service_wait_min": -22.5,
+    "ground_overtime_min": 0.0,
+    "gate_changes": -1.0,
+    "runway_changes": 0.0,
+    "total_cost": -1.0
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 5,
+   "sender": "PILOT",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": "prop-00e04bb086",
+   "changed_preference": true,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "PILOT: existing proposal prop-00e04bb086 is the best plan meeting everyone's stated conditions.",
+   "declared_tradeoff": null,
+   "observed_delta": {}
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 6,
+   "sender": "GROUND",
+   "type": "ACCEPT",
+   "proposal_id": "prop-c34435a576",
+   "previous_proposal_id": "prop-00e04bb086",
+   "changed_preference": true,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: existing proposal prop-c34435a576 is the best plan meeting everyone's stated conditions.",
+   "declared_tradeoff": null,
+   "observed_delta": {
+    "max_landing_delay_min": 0.0,
+    "total_landing_delay_min": 0.0,
+    "weighted_landing_delay": 0.0,
+    "total_service_wait_min": -22.5,
+    "ground_overtime_min": 0.0,
+    "gate_changes": -1.0,
+    "runway_changes": 0.0,
+    "total_cost": -1.0
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 7,
+   "sender": "ATC",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": "prop-c34435a576",
+   "changed_preference": true,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "ATC: frozen plan meets all my stated conditions.",
+   "declared_tradeoff": null,
+   "observed_delta": {
+    "max_landing_delay_min": 0.0,
+    "total_landing_delay_min": 0.0,
+    "weighted_landing_delay": 0.0,
+    "total_service_wait_min": 22.5,
+    "ground_overtime_min": 0.0,
+    "gate_changes": 1.0,
+    "runway_changes": 0.0,
+    "total_cost": 1.0
+   }
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 8,
+   "sender": "PILOT",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": "prop-00e04bb086",
+   "changed_preference": false,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "PILOT: frozen plan meets all my stated conditions.",
+   "declared_tradeoff": null,
+   "observed_delta": {}
+  },
+  {
+   "session_id": "scripted-demo",
+   "seq": 9,
+   "sender": "GROUND",
+   "type": "ACCEPT",
+   "proposal_id": "prop-00e04bb086",
+   "previous_proposal_id": "prop-c34435a576",
+   "changed_preference": true,
+   "reason_codes": [
+    "ACCEPTABLE",
+    "CONDITIONS_MET"
+   ],
+   "explanation": "GROUND: frozen plan meets all my stated conditions.",
+   "declared_tradeoff": null,
+   "observed_delta": {
+    "max_landing_delay_min": 0.0,
+    "total_landing_delay_min": 0.0,
+    "weighted_landing_delay": 0.0,
+    "total_service_wait_min": 22.5,
+    "ground_overtime_min": 0.0,
+    "gate_changes": 1.0,
+    "runway_changes": 0.0,
+    "total_cost": 1.0
+   }
+  }
+ ]
+}

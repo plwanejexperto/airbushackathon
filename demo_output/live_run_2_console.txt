@@ -1,0 +1,70 @@
+model: claude-opus-5-5 | credentials: per_agent {'ATC': True, 'PILOT': True, 'GROUND': True} | call timeout 90.0 s | deadline 600.0 s
+scenario_id: scn-005aba12 | scenario_version: af1df3e57f82 | seed: 5945874 | preset: conflict demonstration
+
+RUNTIME 62s | STATUS AGENT_CONSENSUS | agent_consensus=True | turns=3 | messages=9
+fallback_reason: None | None
+
+MODEL ATTEMPTS (separate from messages):
+  t1 ATC    #1 initial       ok             5.4s tok 9488/479 cred=per_agent
+  t1 PILOT  #1 initial       ok             8.4s tok 10119/870 cred=per_agent
+  t1 GROUND #1 initial       ok            16.4s tok 11908/1486 cred=per_agent
+  t2 ATC    #1 initial       ok             7.1s tok 12878/660 cred=per_agent
+  t2 PILOT  #1 initial       ok             4.9s tok 12496/491 cred=per_agent
+  t2 GROUND #1 initial       ok             3.9s tok 13219/298 cred=per_agent
+  t3 ATC    #1 initial       ok             3.9s tok 14711/294 cred=per_agent
+  t3 PILOT  #1 initial       ok             5.0s tok 14371/465 cred=per_agent
+  t3 GROUND #1 initial       ok             6.3s tok 15092/560 cred=per_agent
+
+MESSAGES + CONDITION EVALUATIONS:
+  turn 1 #1 ATC    PROPOSE         prop-6385daa8ab ref=None resolved=None outdated=False reasons=['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION']
+      RWY-2 is closed t+0-60, so all three flights land on RWY-1. Sequence A101(Heavy, prio 5) first, then B202, then DL1205 at t+25.64. Delay is 3.64 min for DL1205, 4.79 total, weighted 10.71. No runway or gate changes. GC-2 serves DL1205 at GATE-1, service t+83.5
+  turn 1 #2 PILOT  COUNTER_PROPOSE prop-00e04bb086 ref=prop-6385daa8ab resolved=None outdated=False reasons=['CONNECTION_PRESERVATION', 'DELAY_MINIMISATION', 'FUEL_LIMIT']
+      prop-6385daa8ab is fuel-safe: DL1205 lands t+25.64, before the t+30.0 contingency limit, with contingency margin 174.29 kg. But gate-in is t+55.0, missing the t+34 connection target by 21 min for 30 passengers. Counter: DL1205 lands first at t+22.0 with 0 dela
+  turn 1 #3 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['OVERTIME', 'CREW_AVAILABILITY', 'ACCEPTABLE']
+      prop-6385daa8ab has 0 overtime and 0 gate changes. DL1205's 23.5 min crew wait is unavoidable with 2 crews: GC-2 is busy with A101 until t+78.5, plus the 5 min transfer. prop-00e04bb086 needs 2 gate changes and costs 106.22 vs 57.36, for only 1 min less wait. 
+      cond ground_overtime_min[plan] <= 0.0 -> True (canonical 0.0, exact 0.0)
+      cond gate_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+      cond total_service_wait_min[plan] <= 23.5 -> True (canonical 23.5, exact 23.5)
+  turn 2 #4 ATC    ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['DELAY_MINIMISATION', 'WAKE_SEPARATION', 'ACCEPTABLE']
+      prop-6385daa8ab gives weighted delay 10.71 versus 15.43 for prop-00e04bb086. Putting DL1205 first delays A101 (prio 5) 1.5 min and B202 2.64 min. It also needs 2 gate changes and costs 106.22 vs 57.36. On RWY-1 only, DL1205 lands t+25.64, inside PILOT's t+30 l
+      cond runway_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+      cond weighted_landing_delay[plan] <= 10.71 -> True (canonical 10.71, exact 10.714285714285712)
+  turn 2 #5 PILOT  ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['FUEL_LIMIT', 'CONDITIONS_MET', 'ACCEPTABLE']
+      prop-6385daa8ab is fuel-safe for DL1205. It lands t+25.64 with 3.64 min delay, before the t+30.0 contingency limit, leaving 174.29 kg contingency margin and 220.12 kg reserve margin. The 21 min connection miss for 30 passengers is a soft cost. I accept it for 
+      cond landing_min[DL1205] <= 30.0 -> True (canonical 25.64, exact 25.642857142857142)
+      cond contingency_margin_kg[DL1205] >= 0.0 -> True (canonical 174.285714, exact 174.28571428571436)
+      cond runway_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+  turn 2 #6 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['OVERTIME', 'CREW_AVAILABILITY', 'CONDITIONS_MET']
+      prop-6385daa8ab: 0 overtime, 0 gate changes, total service wait 23.5 min, cost 57.36. ATC and PILOT both accept. DL1205's 23.5 min wait follows from GC-2 serving A101 until t+78.5 plus the 5 min crew transfer. The listed options cut wait to 0 but need 1 gate c
+      cond ground_overtime_min[plan] <= 0.0 -> True (canonical 0.0, exact 0.0)
+      cond gate_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+      cond total_service_wait_min[plan] <= 23.5 -> True (canonical 23.5, exact 23.5)
+  turn 3 #7 ATC    ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['DELAY_MINIMISATION', 'WAKE_SEPARATION', 'CONDITIONS_MET']
+      Frozen prop-6385daa8ab is valid. All flights use RWY-1 because RWY-2 is closed t+0-60. Order A101(Heavy) -> B202 -> DL1205 respects wake separation. Weighted delay is 10.71 (lowest), total delay 4.79, max 3.64, with 0 runway changes. DL1205 lands t+25.64, insi
+      cond runway_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+      cond weighted_landing_delay[plan] <= 10.71 -> True (canonical 10.71, exact 10.714285714285712)
+  turn 3 #8 PILOT  ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['FUEL_LIMIT', 'CONDITIONS_MET', 'ACCEPTABLE']
+      I accept frozen prop-6385daa8ab. DL1205 lands at t+25.64 with 3.64 min delay, before the t+30.0 contingency limit. That leaves 174.29 kg contingency margin and 220.12 kg reserve margin. Crew duty is fine: gate-in t+55 + 15 = 70, under 250. The 21 min connectio
+      cond landing_min[DL1205] <= 30.0 -> True (canonical 25.64, exact 25.642857142857142)
+      cond contingency_margin_kg[DL1205] >= 0.0 -> True (canonical 174.285714, exact 174.28571428571436)
+      cond runway_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+  turn 3 #9 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False reasons=['OVERTIME', 'CREW_AVAILABILITY', 'CONDITIONS_MET']
+      I accept frozen prop-6385daa8ab. Overtime is 0: GC-1 finishes B202 at t+82.5, before its t+90 shift end. There are 0 gate changes. DL1205 reaches GATE-1 at t+55.0, after the resident aircraft leaves at t+50 plus the 5 min buffer. GC-2 serves DL1205 t+83.5-123.
+      cond ground_overtime_min[plan] <= 0.0 -> True (canonical 0.0, exact 0.0)
+      cond gate_changes[plan] == 0.0 -> True (canonical 0.0, exact 0.0)
+      cond total_service_wait_min[plan] <= 23.5 -> True (canonical 23.5, exact 23.5)
+
+LINEAGE: [('ATC', 'prop-6385daa8ab')] | final kind: agent consensus
+FINAL vs REFERENCE (selected flight, attributed):
+   Landing / touchdown time (t+ min): 22.0 -> 25.642857142857142 | by ATC msg 1 | ['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION'] | constraint violation in the reference plan | evidence ['WAKE-SEP', 'RWY-OCC']
+   Gate arrival / on-block time (t+ min): 32.5 -> 55.0 | by ATC msg 1 | ['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION'] | constraint violation in the reference plan | evidence ['GATE-OVERLAP', 'TAXI-BLOCK', 'TAXI-CONFLICT']
+   Ground crew: GC-1 -> GC-2 | by ATC msg 1 | ['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION'] | constraint violation in the reference plan | evidence ['CREW-OVERLAP']
+   Service start (t+ min): 37.5 -> 83.5 | by ATC msg 1 | ['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION'] | constraint violation in the reference plan | evidence ['CREW-OVERLAP']
+   Service end (t+ min): 77.5 -> 123.5 | by ATC msg 1 | ['RUNWAY_CLOSURE', 'WAKE_SEPARATION', 'DELAY_MINIMISATION'] | constraint violation in the reference plan | evidence ['CREW-OVERLAP']
+selected flight reference: {'landing_min': 22.0, 'gate_arrival_min': 32.5, 'gate': 'GATE-1', 'runway': 'RWY-1', 'taxi_route': 'TWY-A1 > TWY-C > TWY-G1'}
+selected flight revised  : {'landing_min': 25.642857142857142, 'gate_arrival_min': 55.0, 'gate': 'GATE-1', 'runway': 'RWY-1', 'taxi_route': 'TWY-A1 > TWY-C > TWY-G1'}
+
+FROZEN: prop-6385daa8ab | ranking: [('prop-6385daa8ab', 'ATC', 3, 0, 3), ('prop-00e04bb086', 'PILOT', 1, 0, 0)]
+VOTES: [('ATC', 'ACCEPT', 'prop-6385daa8ab', True, 'accepted the frozen proposal'), ('PILOT', 'ACCEPT', 'prop-6385daa8ab', True, 'accepted the frozen proposal'), ('GROUND', 'ACCEPT', 'prop-6385daa8ab', True, 'accepted the frozen proposal')]
+VALIDATION EVENTS: [('reference', 'prop-1763015b0e', False, 68, ['CREW-OVERLAP', 'GATE-OVERLAP', 'RWY-OCC', 'TAXI-BLOCK', 'TAXI-CONFLICT', 'WAKE-SEP']), ('registration', 'prop-6385daa8ab', True, 63, []), ('registration', 'prop-00e04bb086', True, 65, []), ('freeze', 'prop-6385daa8ab', True, 63, []), ('final_revalidation', 'prop-6385daa8ab', True, 63, [])]
+FINAL PLAN prop-6385daa8ab source negotiation | validation in session: True 63 | independent re-run now: True 63

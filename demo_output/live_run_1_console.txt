@@ -1,0 +1,39 @@
+credential_mode: per_agent {'ATC': True, 'PILOT': True, 'GROUND': True} | model: claude-opus-5-5 | call timeout 90.0 | deadline 600.0
+
+DONE in 86s | status=FALLBACK_SELECTED | consensus=False | turns=3 | messages=9
+fallback_reason: NO_UNANIMOUS_AGREEMENT | No unanimous acceptance of the frozen proposal - ATC: ACCEPT with unresolved/unsatisfied conditions
+fallback outcome: FALLBACK_SELECTED EXHAUSTED
+model attempts:
+  turn 1 ATC    attempt 1 initial       ok           5.8s tokens in/out 9132/512 model=claude-opus-5-5 cred=per_agent err=None
+  turn 1 PILOT  attempt 1 initial       schema_error 10.0s tokens in/out 9768/1082 model=claude-opus-5-5 cred=per_agent err=schema: tradeoff.because: Input should be 'FUEL_LIMIT', 'CREW_DUTY_LIMIT', 'WAKE_SEPARATION', 'RUNWAY_CLOSURE', 'RUNWAY_CAPACITY', 'TAXIWAY_BLOCKED', 'GATE_UNAVAILABLE', 'GATE_INCOMPATIBLE', 'TURNAROUND_TIME', 'CREW_AVAILABILITY', 'OVERTIME', 'DELAY_MINIMISATION', 'CONNECTION_PRESERVATION', 'COST_TR
+  turn 1 PILOT  attempt 2 schema_repair ok           8.7s tokens in/out 10131/966 model=claude-opus-5-5 cred=per_agent err=None
+  turn 1 GROUND attempt 1 initial       ok           17.3s tokens in/out 11406/1760 model=claude-opus-5-5 cred=per_agent err=None
+  turn 2 ATC    attempt 1 initial       ok           7.4s tokens in/out 12388/675 model=claude-opus-5-5 cred=per_agent err=None
+  turn 2 PILOT  attempt 1 initial       schema_error 8.3s tokens in/out 12110/821 model=claude-opus-5-5 cred=per_agent err=schema: tradeoff.because: Input should be 'FUEL_LIMIT', 'CREW_DUTY_LIMIT', 'WAKE_SEPARATION', 'RUNWAY_CLOSURE', 'RUNWAY_CAPACITY', 'TAXIWAY_BLOCKED', 'GATE_UNAVAILABLE', 'GATE_INCOMPATIBLE', 'TURNAROUND_TIME', 'CREW_AVAILABILITY', 'OVERTIME', 'DELAY_MINIMISATION', 'CONNECTION_PRESERVATION', 'COST_TR
+  turn 2 PILOT  attempt 2 schema_repair ok           6.8s tokens in/out 12473/630 model=claude-opus-5-5 cred=per_agent err=None
+  turn 2 GROUND attempt 1 initial       ok           4.2s tokens in/out 12828/336 model=claude-opus-5-5 cred=per_agent err=None
+  turn 3 ATC    attempt 1 initial       ok           3.9s tokens in/out 14329/326 model=claude-opus-5-5 cred=per_agent err=None
+  turn 3 PILOT  attempt 1 initial       ok           4.2s tokens in/out 14031/346 model=claude-opus-5-5 cred=per_agent err=None
+  turn 3 GROUND attempt 1 initial       ok           8.2s tokens in/out 14769/638 model=claude-opus-5-5 cred=per_agent err=None
+messages:
+  turn 1 #1 ATC    PROPOSE         prop-6385daa8ab ref=None resolved=None outdated=False
+     RWY-2 is closed t+0-60, so all three land on RWY-1. Sequence: SIM-A101 (Heavy, prio 5) at ETA t+22, then SIM-B202, then DL1205 at t+25.64. Heavy->Large needs 120s and Large->Large needs 77s. Weighted delay is 10.71, max 3.64 min, 
+  turn 1 #2 PILOT  COUNTER_PROPOSE prop-00e04bb086 ref=prop-6385daa8ab resolved=None outdated=False
+     ATC plan is fuel-safe: DL1205 lands t+25.64, before the t+30 limit, with 174.29 kg contingency margin. But gate-in at t+55 misses 30 connecting pax by 21 min. Counter: DL1205 first on RWY-1 at t+22 to GATE-3 with GC-2, 0 runway ch
+  turn 1 #3 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False
+     ATC plan is valid with 0 overtime, 0 gate changes and the lowest cost (57.36). The 23.5 min DL1205 wait for GC-2 is within duty limits. PILOT counter has 2 gate changes, 22.5 min wait and cost 106.22, and its weighted delay of 15.
+  turn 2 #4 ATC    ACCEPT          prop-6385daa8ab ref=None resolved=False outdated=False
+     I stand by prop-6385daa8ab: weighted delay 10.71, cost 57.36, 0 runway and 0 gate changes, and GROUND has accepted it. DL1205 lands t+25.64, inside PILOT's t+30 limit with 174.29 kg contingency. PILOT's counter raises weighted del
+  turn 2 #5 PILOT  ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False
+     Accepting prop-6385daa8ab as fuel-safe. DL1205 lands t+25.64, before the t+30 contingency limit, with 174.29 kg contingency and 220.12 kg reserve margin. We concede the soft connection: 21 min miss for 30 pax. No valid option give
+  turn 2 #6 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False
+     Reaffirming prop-6385daa8ab, which ATC and PILOT also accept. It is valid with 0 ground overtime, 0 gate changes and 0 runway changes, at cost 57.36 (lowest). DL1205 waits 23.5 min for GC-2, with service t+83.5-123.5 inside GC-2's
+  turn 3 #7 ATC    ACCEPT          prop-6385daa8ab ref=None resolved=False outdated=False
+     Accepting frozen prop-6385daa8ab. With RWY-2 closed t+0-60, all three use RWY-1: SIM-A101 t+22, SIM-B202 t+24.1 (Heavy->Large 120s), DL1205 t+25.64 (Large->Large 77s). Weighted delay 10.71, max 3.64 min, 0 runway and 0 gate change
+  turn 3 #8 PILOT  ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False
+     Accepting frozen prop-6385daa8ab. DL1205 lands t+25.64 on RWY-1, before the t+30 contingency limit, leaving 174.29 kg contingency margin and 220.12 kg reserve margin. Gate-in t+55 plus 15 min postflight is within the 250 min duty 
+  turn 3 #9 GROUND ACCEPT          prop-6385daa8ab ref=None resolved=True outdated=False
+     Accepting frozen prop-6385daa8ab. It is valid with 0 ground overtime and 0 gate changes. DL1205 uses GATE-1 from gate-in t+55, after the resident leaves (t+50) plus the 5 min buffer. GC-2 serves SIM-A101 t+38.5-78.5, then DL1205 t
+frozen: prop-6385daa8ab | votes: [('ATC', 'ACCEPT with unresolved/unsatisfied conditions'), ('PILOT', 'accepted the frozen proposal'), ('GROUND', 'accepted the frozen proposal')]
+selected flight: {"reference": {"landing_min": 22.0, "gate_arrival_min": 32.5, "gate": "GATE-1", "runway": "RWY-1", "taxi_route": "TWY-A1 > TWY-C > TWY-G1"}, "revised": {"landing_min": 25.642857142857142, "gate_arrival_min": 55.0, "gate": "GATE-1", "runway": "RWY-1", "taxi_route": "TWY-A1 > TWY-C > TWY-G1"}, "changed": {"landing_min": [22.0, 25.642857142857142], "gate_in_min": [32.5, 55.0], "ground_crew_id": ["GC-1", "GC-2"], "service_start_min": [37.5, 83.5], "service_end_min": [77.5, 123.5]}, "proposed_by": {"landing_min": "FALLBACK PLANNER", "gate_in_min": "FALLBACK PLANNER", "ground_crew_id": "FALLBACK PLANNER", "service_start_min": "FALLBACK PLANNER", "service_end_min": "FALLBACK PLANNER"}}
+final validation passed: True 63
