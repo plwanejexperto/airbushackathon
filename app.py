@@ -1,10 +1,15 @@
 """Streamlit UI: python3 -m streamlit run app.py"""
+import os
+
 import pandas as pd
 import streamlit as st
 from pydantic import ValidationError
 
-from airport_ops import data, eventlog
+from airport_ops import agents, data, eventlog, llm
 from airport_ops.fallback import Outcome, SearchStatus, run_fallback
+from airport_ops.messages import SPEAKING_ORDER, AgentRole
+from airport_ops.negotiation import FREEZE_RULE, Coordinator, NegotiationConfig, new_session_id
+from airport_ops.negotiation_types import AgentContext, FinalStatus
 from airport_ops.plan import RecoveryPlan
 from airport_ops.planner import Planner
 from airport_ops.report import assignment_rows, fallback_payload, validation_payload
@@ -13,6 +18,8 @@ from airport_ops.schemas import SimAssumptions
 from airport_ops.validate import CONSTRAINTS, validate_plan
 from airport_ops.workbook import load_workbook_rules
 
+llm.load_env_file()  # names only; shell variables win over the .env file
+ENV_LOADED = list(llm.LOADED_FROM_FILE)  # reruns find the keys already in the environment; this remembers where they came from
 st.set_page_config(page_title="Airport Disruption Negotiation", layout="wide")
 st.title("Airport Disruption Negotiation – Scenario, Validation & Fallback")
 
@@ -71,8 +78,32 @@ eventlog.log_event(sc.scenario_id, "scenario_created",
 st.caption(f"Scenario `{sc.scenario_id}` · version `{sc.scenario_version}` · seed {sc.simulated.seed} "
            f"(deterministic per flight) · scenario airport = destination **{sc.workbook.airport.iata_code}**")
 
-tab_h, tab_w, tab_s, tab_p = st.tabs(["📊 Historical (dataset)", "📘 Workbook limits (synthetic)",
-                                      "🧪 Simulated conditions", "🛠 Plans & validation"])
+# ---------- shared renderer for a plan + its validation ----------
+def show_report(plan: RecoveryPlan, report, only_fail: bool, key: str):
+    nfail = len(report.failures)
+    if report.passed:
+        st.success(f"VALID – all {len(report.results)} hard-constraint checks pass · proposal `{plan.proposal_id}` "
+                   f"· scenario `{plan.scenario_version}` · source: {plan.source}")
+    else:
+        st.error(f"REJECTED – {nfail} of {len(report.results)} checks failed · proposal `{plan.proposal_id}` "
+                 f"· scenario `{plan.scenario_version}` · source: {plan.source}")
+    st.markdown("**Per-flight assignments**")
+    st.dataframe(pd.DataFrame(assignment_rows(plan, sc)), hide_index=True)
+    st.markdown("**Constraint results**")
+    rows = [{"result": "✅ pass" if r.passed else "❌ FAIL", "constraint": r.constraint_id,
+             "flight": r.flight_id or "—", "resource": r.resource_id or "—", "explanation": r.explanation,
+             "basis": r.basis} for r in sorted(report.results, key=lambda r: (r.passed, r.flight_id or "~", r.constraint_id))]
+    if only_fail:
+        rows = [r for r in rows if r["result"].startswith("❌")]
+    flights = ["(all)"] + [f.flight_id for f in sc.simulated.flights]
+    pick = st.selectbox("Filter by flight", flights, key=f"flt-{key}")
+    if pick != "(all)":
+        rows = [r for r in rows if r["flight"] in (pick, "—")]
+    st.dataframe(pd.DataFrame(rows), hide_index=True)
+
+
+tab_h, tab_w, tab_s, tab_n, tab_p = st.tabs(["📊 Historical (dataset)", "📘 Workbook limits (synthetic)",
+                                         "🧪 Simulated conditions", "🤝 Negotiation (3 agents)", "🛠 Plans & validation"])
 unk = lambda v: v if v else "Unknown"
 
 # ---------- historical ----------
@@ -103,7 +134,8 @@ with tab_w:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Active runways (airport total)", ap.active_runways, help=f"Modelled in demo: {sub.modelled_runways}")
     c2.metric("Gates (airport total)", ap.gates, help=f"Modelled in demo: {sub.modelled_gates}")
-    c3.metric("Max runway ops / hour", ap.max_runway_ops_per_hour, help="Read as airport-wide movements per hour")
+    c3.metric("Airport-wide runway ops / hour (workbook)", ap.max_runway_ops_per_hour,
+              help="Workbook max_runway_ops_per_hour, read as airport-wide movements per hour")
     c4.metric("Min turnaround (min)", ap.min_turnaround_min)
     st.table(pd.DataFrame([
         {"resource": "Runways", "airport total": str(sub.total_runways), "modelled subset": str(sub.modelled_runways)},
@@ -111,6 +143,12 @@ with tab_w:
         {"resource": "Spare gates at any time", "airport total": str(sub.spare_gates_at_any_time),
          "modelled subset": f"{min(sub.spare_gates_at_any_time, sub.modelled_gates)} of the modelled gates kept free"}]))
     st.caption(sub.note)
+    from airport_ops.capacity import per_runway_limit
+    _pr = per_runway_limit(sc)
+    st.caption("Separate ASSUMPTION layered on the airport-wide limit: per-runway share mode "
+               f"**{sc.simulated.assumptions.per_runway_share_mode}** → "
+               + (f"{_pr} movements/hour per runway" if _pr is not None else "no per-runway check")
+               + " (configure `per_runway_share_mode` / `per_runway_fixed_ops_per_hour` in `SimAssumptions`).")
     fcr = sc.workbook.fuel_crew
     st.markdown("**Wake separation** (ordered: leader → follower)")
     wk = [{"leader": r.leader.value, "follower": r.follower.value, "min_separation_nm": r.min_separation_nm,
@@ -163,31 +201,173 @@ with tab_s:
 
 
 # ---------- plans ----------
-def show_report(plan: RecoveryPlan, report, only_fail: bool, key: str):
-    nfail = len(report.failures)
-    if report.passed:
-        st.success(f"VALID – all {len(report.results)} hard-constraint checks pass · proposal `{plan.proposal_id}` "
-                   f"· scenario `{plan.scenario_version}` · source: {plan.source}")
-    else:
-        st.error(f"REJECTED – {nfail} of {len(report.results)} checks failed · proposal `{plan.proposal_id}` "
-                 f"· scenario `{plan.scenario_version}` · source: {plan.source}")
-    st.markdown("**Per-flight assignments**")
-    st.dataframe(pd.DataFrame(assignment_rows(plan, sc)), hide_index=True)
-    st.markdown("**Constraint results**")
-    rows = [{"result": "✅ pass" if r.passed else "❌ FAIL", "constraint": r.constraint_id,
-             "flight": r.flight_id or "—", "resource": r.resource_id or "—", "explanation": r.explanation,
-             "basis": r.basis} for r in sorted(report.results, key=lambda r: (r.passed, r.flight_id or "~", r.constraint_id))]
-    if only_fail:
-        rows = [r for r in rows if r["result"].startswith("❌")]
-    flights = ["(all)"] + [f.flight_id for f in sc.simulated.flights]
-    pick = st.selectbox("Filter by flight", flights, key=f"flt-{key}")
-    if pick != "(all)":
-        rows = [r for r in rows if r["flight"] in (pick, "—")]
-    st.dataframe(pd.DataFrame(rows), hide_index=True)
-
-
 runs = st.session_state.setdefault("runs", {})
 run = runs.setdefault(sc.scenario_version, {})
+
+# ---------- negotiation (3 agents) ----------
+neg_runs = st.session_state.setdefault("neg_runs", {})      # session_id -> NegotiationResult (survives reruns)
+neg_latest = st.session_state.setdefault("neg_latest", {})  # scenario_version -> session_id
+
+with tab_n:
+    live_cfg = llm.LiveConfig.from_env()
+    st.caption(".env file: " + (f"{len(ENV_LOADED)} variable(s) read from it ({', '.join(ENV_LOADED)}); values are never shown"
+                                if ENV_LOADED else "nothing read from it (missing, empty, or already set in the shell)")
+               + ". Restart the app after editing it.")
+    default_mode = 1 if os.environ.get("NEGOTIATION_MODE", "scripted").lower() == "live" else 0
+    mode_label = st.radio("Mode", ["Scripted demo (no LLM calls)", "Live LLM (Claude API)"], index=default_mode,
+                          horizontal=True, key="neg_mode")
+    live = mode_label.startswith("Live")
+    if live:
+        st.info(f"**LIVE** mode · model `{live_cfg.model}` · per-call timeout {live_cfg.call_timeout_s:g}s · "
+                f"total deadline {live_cfg.deadline_s:g}s · credentials: **{live_cfg.credential_mode}** "
+                f"(" + ", ".join(f"{r}: {'set' if ok else 'missing'}" for r, ok in live_cfg.credentials_by_role.items()) + ")")
+        if not live_cfg.credentials_present:
+            st.error("Live mode needs one key per agent (`ANTHROPIC_API_KEY_ATC`, `_PILOT`, `_GROUND`) or one shared "
+                     "`ANTHROPIC_API_KEY` in the environment"
+                     + (" - per-agent keys are only partly set" if live_cfg.credential_mode == "incomplete" else "")
+                     + ". A live run will NOT silently fall back to scripted mode.")
+    else:
+        st.warning("**SCRIPTED DEMO** – deterministic scripted policies, **no language model is called**. Same message "
+                   "schemas, validator and coordinator as live mode.")
+    st.caption("Scope: one Pilot agent represents the selected historical flight only; the two simulated competing flights are "
+               "deterministic traffic (no Pilot agents yet).")
+    if st.button("Start new negotiation", type="primary", disabled=live and not live_cfg.credentials_present,
+                 help="Creates a new session id and runs ATC → Pilot → Ground for up to 3 turns (max 9 messages)."):
+        try:
+            client = llm.make_client("live" if live else "scripted")
+        except llm.MissingCredentials as e:
+            st.error(f"Cannot start live run: {e}")
+        else:
+            cfg = NegotiationConfig(call_timeout_s=live_cfg.call_timeout_s, deadline_s=live_cfg.deadline_s) if live else NegotiationConfig()
+            sid = new_session_id()
+            with st.spinner(f"Negotiating ({'live Claude calls' if live else 'scripted'})…"):
+                neg_runs[sid] = Coordinator(sc, client, config=cfg, session_id=sid).run()
+            neg_latest[sc.scenario_version] = sid
+
+    stale = [r for r in neg_runs.values() if r.scenario_version != sc.scenario_version]
+    res = neg_runs.get(neg_latest.get(sc.scenario_version, ""))
+    if stale:
+        st.caption(f"{len(stale)} earlier session(s) belong to other scenario versions and are not shown or combined.")
+    if res is None:
+        st.info("No negotiation has been run for this scenario version yet.")
+    else:
+        is_live = res.mode == "live"
+        cols = st.columns(5)
+        cols[0].metric("Mode", {"live": "LIVE LLM", "scripted": "SCRIPTED", "mock": "MOCK"}.get(res.mode, res.mode),
+                       help=f"model: {res.model_name}")
+        cols[1].metric("Scenario version", res.scenario_version)
+        cols[2].metric("Turns completed", f"{res.turns_completed} / 3")
+        cols[3].metric("Messages", f"{len(res.messages)} / 9")
+        cols[4].metric("Session", res.session_id)
+        if res.scenario_version != sc.scenario_version:
+            st.error("This session belongs to a different scenario version and is invalid for the current scenario.")
+        S = res.status
+        if S == FinalStatus.AGENT_CONSENSUS:
+            st.success(f"**AGENT_CONSENSUS** – all three agents accepted frozen proposal `{res.frozen_proposal_id}` "
+                       f"(scenario `{res.scenario_version}`) and an independent re-validation passed "
+                       f"({len(res.final_validation.results)} checks).")
+        elif S == FinalStatus.FALLBACK_SELECTED:
+            st.warning(f"**FALLBACK_SELECTED** – this is the deterministic fallback planner's plan, **NOT agent consensus**. "
+                       f"Reason: `{res.fallback_reason.value}`")
+        elif S == FinalStatus.NO_FEASIBLE_PLAN:
+            st.error(f"**NO_FEASIBLE_PLAN** – agents did not reach consensus and the fallback found no valid plan "
+                     f"(search **{res.fallback.search_status.value}**"
+                     + (": candidate set exhausted" if res.fallback.search_status == SearchStatus.EXHAUSTED
+                        else ": infeasibility NOT proven") + f"). Fallback trigger: `{res.fallback_reason.value}`")
+        else:
+            st.error(f"**SESSION_INVALIDATED** – {res.invalidation_detail}")
+        if res.fallback_reason:
+            st.markdown(f"**Why the fallback ran:** `{res.fallback_reason.value}` – {res.fallback_detail}")
+            for r_ in res.fallback.reasons:
+                st.write("• " + r_)
+
+        # ---- three separate agent panels
+        st.subheader("Agents")
+        pcols = st.columns(3)
+        blank = lambda role: AgentContext(role=role, turn=1, seq=1, session_id=res.session_id, scenario=sc, historical=h,
+                                          messages=[], proposals=[], standing={r: [] for r in SPEAKING_ORDER}, allowed_types=[])
+        for col, role in zip(pcols, SPEAKING_ORDER):
+            with col:
+                icon = {"ATC": "🛫", "PILOT": "👨‍✈️", "GROUND": "🧰"}[role.value]
+                st.markdown(f"### {icon} {role.value}")
+                st.caption({"ATC": "runways · separation · taxiways · capacity",
+                            "PILOT": f"selected flight {h.label} only · fuel · ETA window · connection",
+                            "GROUND": "gates · crews · turnaround (stands/equipment not modelled)"}[role.value])
+                with st.expander("Domain view (what this agent sees)"):
+                    st.json(agents.MODULES[role].domain_view(blank(role)))
+                for m in [m for m in res.messages if m.sender == role]:
+                    with st.container(border=True):
+                        st.markdown(f"**Turn {m.turn} · {m.type.value}** → `{m.proposal_id}`"
+                                    + (f" (counters `{m.referenced_proposal_id}`)" if m.referenced_proposal_id else ""))
+                        st.write(m.explanation)
+                        if m.reason_codes:
+                            st.caption("reasons: " + ", ".join(r.value for r in m.reason_codes))
+                        if m.conditions:
+                            st.caption("conditions: " + "; ".join(
+                                f"{c.field.value}{('['+c.flight_id+']') if c.flight_id else ''} {c.op.value} {c.value}" for c in m.conditions)
+                                       + (f" → resolved: {m.conditions_resolved}" if m.conditions_resolved is not None else ""))
+                        if m.outdated:
+                            st.error("accepted an OUTDATED proposal (not the frozen one)")
+                        d = next((d for d in res.decisions if d.seq == m.seq), None)
+                        if d and (d.changed_preference or d.declared_tradeoff):
+                            st.caption("position changed" if d.changed_preference else "position held")
+                            if d.declared_tradeoff:
+                                t_ = d.declared_tradeoff
+                                st.caption(f"declared trade-off: {t_.metric.value} {t_.before:.1f} → {t_.after:.1f} ({t_.because.value})")
+                            if d.observed_delta:
+                                st.caption("measured (coordinator): " + ", ".join(f"{k} {v:+.1f}" for k, v in d.observed_delta.items()
+                                                                                    if k in ("weighted_landing_delay", "ground_overtime_min", "total_cost")))
+
+        # ---- timeline
+        st.subheader("Message timeline")
+        st.dataframe(pd.DataFrame([{
+            "seq": m.seq, "turn": m.turn, "sender": m.sender.value, "type": m.type.value, "proposal": m.proposal_id,
+            "refs": m.referenced_proposal_id or "—", "valid plan": res.proposal(m.proposal_id).validation.passed,
+            "conditions resolved": "—" if m.conditions_resolved is None else str(m.conditions_resolved),
+            "reasons": ", ".join(r.value for r in m.reason_codes), "explanation": m.explanation} for m in res.messages]),
+            hide_index=True)
+
+        # ---- candidate versions
+        st.subheader("Candidate plan versions & validation")
+        st.dataframe(pd.DataFrame([{
+            "v": p.version_no, "proposal": p.proposal_id, "by": p.proposer.value, "turn": p.turn, "valid": p.validation.passed,
+            "failed constraints": ", ".join(sorted({r.constraint_id for r in p.validation.failures})) or "—",
+            "weighted delay": round(p.metrics["plan"]["weighted_landing_delay"], 1),
+            "ground overtime": round(p.metrics["plan"]["ground_overtime_min"], 1),
+            "cost": round(p.metrics["plan"]["total_cost"], 1), "origin": p.origin,
+            "frozen": p.proposal_id == res.frozen_proposal_id} for p in res.proposals]), hide_index=True)
+        if res.proposals:
+            pick = st.selectbox("Inspect a candidate's validation", [p.proposal_id for p in res.proposals], key=f"pick-{res.session_id}")
+            rec = res.proposal(pick)
+            show_report(rec.plan, rec.validation, st.checkbox("Only failed checks", value=not rec.validation.passed,
+                                                              key=f"of-{res.session_id}"), f"neg-{res.session_id}")
+
+        # ---- frozen candidate
+        st.subheader("Frozen final candidate")
+        if res.frozen_proposal_id:
+            fz = res.proposal(res.frozen_proposal_id)
+            st.write(f"`{fz.proposal_id}` · version {fz.version_no} · digest `{fz.digest}` · validation "
+                     f"{'PASS' if fz.validation.passed else 'FAIL'}")
+            st.caption("Selection rule: " + FREEZE_RULE)
+            st.dataframe(pd.DataFrame(res.freeze_ranking), hide_index=True)
+            if res.votes:
+                st.markdown("**Turn-3 votes on the identical frozen proposal**")
+                st.dataframe(pd.DataFrame([{"agent": v.role.value, "type": v.type.value if v.type else "—",
+                                            "proposal": v.proposal_id or "—", "counted": v.counted_as_accept, "note": v.note}
+                                           for v in res.votes]), hide_index=True)
+        else:
+            st.info("No candidate was frozen (no proposal passed validation before turn 3, or the session ended earlier).")
+
+        # ---- final plan
+        if res.final_plan is not None:
+            st.subheader("Final plan" + (" (agent consensus)" if res.consensus else " (deterministic fallback)"))
+            show_report(res.final_plan, res.final_validation, False, f"final-{res.session_id}")
+
+        # ---- model attempts (separate from messages)
+        st.subheader("Model attempts (separate from messages)")
+        if res.mode == "scripted":
+            st.caption("Scripted demo: these rows are policy invocations, not language-model calls.")
+        st.dataframe(pd.DataFrame([a_.model_dump(mode="json", exclude={"session_id"}) for a_ in res.attempts]), hide_index=True)
 
 with tab_p:
     only_fail = st.checkbox("Show only failed checks", value=False)

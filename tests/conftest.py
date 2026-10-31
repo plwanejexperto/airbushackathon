@@ -87,3 +87,10 @@ def good(calm):
             service_start=p1.service_end_min + sc.simulated.assumptions.ground_crew_transfer_min)
     p2 = mk(sc, f2, "RWY-2", 20.0, "GATE-2", "GC-2", p3.gate_in_min)
     return sc, make_plan(sc, "test", [p1, p2, p3])
+
+
+@pytest.fixture(autouse=True)
+def _never_read_real_dotenv(monkeypatch, tmp_path):
+    from airport_ops import llm
+    monkeypatch.setenv("NEGOTIATION_ENV_FILE", str(tmp_path / "no-such.env"))
+    llm.LOADED_FROM_FILE.clear()

@@ -12,7 +12,7 @@ import random
 import zlib
 from typing import Optional
 
-from .schemas import (CapacitySubset, FlightCrew, FuelState, GateResource, GroundCrew, HistoricalFlight,
+from .schemas import (CapacitySubset, ConnectionPreference, FlightCrew, FuelState, GateResource, GroundCrew, HistoricalFlight,
                       Interval, RunwayResource, Scenario, SimAssumptions, SimFlight, SimulatedConditions,
                       TaxiSegment, WorkbookLimits)
 from .workbook import AircraftClass, WakeCategory, WorkbookRules
@@ -107,7 +107,7 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
             priority=rng.randint(1, 5), earliest_landing_min=float(eta), original_runway_id=rw_ids[0],
             original_gate_id=og.id, original_ground_crew_id=gc, flight_crew_id=f"FC-{fid}",
             service_task_min=float(rng.randint(min(20, hi_task), hi_task)),
-            fuel=FuelState(trip_fuel_remaining_kg=round(trip, 1), fuel_on_board_kg=round(onboard, 1),
+            fuel=FuelState(trip_fuel_remaining_kg=trip, fuel_on_board_kg=onboard,
                            spare_fuel_min_at_eta=float(spare))))
         remaining_duty = rng.randint(180, 320)  # minutes of duty left at t=0
         flight_crews.append(FlightCrew(id=f"FC-{fid}", home_flight_id=fid,
@@ -118,10 +118,21 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
                       available_from_min=float(rng.randint(5, 20)) if h.late_aircraft_delay_min > 0 else 0.0),
            GroundCrew(id="GC-2", shift_start_min=rng.randint(100, 200) - shift_h)]
 
+    sel = flights[0]
+    conn = ConnectionPreference(flight_id=sel.flight_id, connecting_passengers=rng.randint(10, 40),
+                                preferred_gate_in_by_min=sel.earliest_landing_min + rng.randint(20, 45))
     sim = SimulatedConditions(seed=seed, assumptions=a, flights=flights, runways=runways, taxi_segments=segs,
-                              gates=gates, flight_crews=flight_crews, ground_crews=gcs)
+                              gates=gates, flight_crews=flight_crews, ground_crews=gcs, connection=conn)
     wb = WorkbookLimits(airport=ap, wake=rules.wake, fuel_crew=fc, capacity_subset=subset)
     content = {"historical": h.model_dump(mode="json"), "workbook": wb.model_dump(mode="json"),
                "simulated": sim.model_dump(mode="json")}
     return Scenario(scenario_id=f"scn-{seed:08x}", scenario_version=scenario_version(content),
                     historical=h, workbook=wb, simulated=sim)
+
+
+def rehash_scenario(sc: Scenario) -> Scenario:
+    """Return a copy whose scenario_version matches its (possibly edited) content. Any change to a scenario MUST go
+    through this: plans, proposals and caches are bound to the version."""
+    content = {"historical": sc.historical.model_dump(mode="json"), "workbook": sc.workbook.model_dump(mode="json"),
+               "simulated": sc.simulated.model_dump(mode="json")}
+    return sc.model_copy(update={"scenario_version": scenario_version(content)}, deep=True)

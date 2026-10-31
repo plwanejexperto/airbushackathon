@@ -1,6 +1,7 @@
-# Airport disruption negotiation – prototype (stage 2: workbook-backed scenarios, validator, fallback)
+# Airport disruption negotiation – prototype
 
-No LLM agents yet. Everything here is deterministic.
+Stage 2 (workbook scenarios, validator, fallback) is deterministic. Stage 3 adds three independent agents and a bounded
+negotiation coordinator on top of it (live Claude calls or a scripted demo).
 
 ## Run
     pip install -r requirements.txt
@@ -42,3 +43,34 @@ All times are minutes from scenario start (`t+N`).
 * `min_time_s` is labelled "same runway departures"; all three flights are arrivals. nm → time uses an assumed 140 kt, and the time is applied as a conservative floor (`wake_apply_time_floor`).
 * Fuel at start = trip + 5 % contingency + 30 min reserve + seeded spare (25–45 min) so holding beyond the spare eats contingency first, then reserve.
 * Every other number is in `SimAssumptions` (runway occupancy, deboard time, gate buffer, crew transfer, post-flight duty, overtime cap, trip burn rates).
+
+## Stage 3: three agents + bounded negotiation
+    export ANTHROPIC_API_KEY=...            # live mode only; never stored in SQLite or logs
+    export NEGOTIATION_MODEL=claude-opus-5-5 NEGOTIATION_CALL_TIMEOUT_S=90 NEGOTIATION_DEADLINE_S=600   # optional
+    python3 -m streamlit run app.py         # tab "Negotiation (3 agents)": pick Scripted demo or Live LLM
+
+* **Agents** (`airport_ops/agents/{atc,pilot,ground}.py`): separate role instructions, domain views and (live) separate model calls.
+  Scope: ONE Pilot agent for the selected historical flight; the two competing flights are deterministic traffic.
+  Stands/equipment are not modelled (ground crews are the turnaround capacity proxy). The selected flight's connection
+  preference is SIMULATED and soft.
+* **Messages** (`messages.py`): PROPOSE / COUNTER_PROPOSE / ACCEPT / REJECT with sender, turn, scenario version, proposal id,
+  referenced id, reason codes, explanation and machine-checkable `Condition`s (defined fields/ops only). Proposals carry a
+  complete `RecoveryPlan`; agents choose discrete assignments (`plan_spec`) and a deterministic tool builds the timeline.
+* **Coordinator** (`negotiation.py`): turns 1-2 ATC -> PILOT -> GROUND; deterministic freeze rule; turn 3 accept/reject of the
+  identical frozen proposal only; consensus needs 3 resolved ACCEPTs of the same id + version AND a fresh re-validation.
+  Max 3 turns / 9 messages; per-call timeout + total deadline; one schema-repair retry per message (a separate *model attempt*).
+  Timeout, API error, unrecoverable reply, no valid candidate, no unanimity -> deterministic fallback
+  (`FALLBACK_SELECTED` / `NO_FEASIBLE_PLAN`, search `EXHAUSTED` vs `TIMEOUT`) - never reported as consensus.
+  A scenario-version change mid-session -> `SESSION_INVALIDATED`.
+* **Reviewed assumptions**: `fuel.py` documents the fuel arithmetic (trip fuel burned once; reserve and contingency protected;
+  exact boundaries); `capacity.py` keeps the workbook airport-wide limit separate from the configurable per-runway share
+  (`per_runway_share_mode`: even_split | fixed | disabled; default unchanged).
+* Live credentials (environment only): either one key per agent - `ANTHROPIC_API_KEY_ATC`, `ANTHROPIC_API_KEY_PILOT`,
+  `ANTHROPIC_API_KEY_GROUND` (all three required; each agent's calls use only its own key) - or one shared `ANTHROPIC_API_KEY`
+  / `ANTHROPIC_AUTH_TOKEN`. Partly-set per-agent keys are refused (never mixed with a shared key). An `ant auth login` profile
+  is not used. Missing credentials block a live run; it never switches to scripted. Keys are redacted from logs and errors.
+
+### Keys in a `.env` file
+Copy `.env.example` to `.env` (project root, git-ignored), fill in the three `ANTHROPIC_API_KEY_*` values (or one shared
+`ANTHROPIC_API_KEY`), and restart the app. Only `ANTHROPIC_*` / `NEGOTIATION_*` names are read; variables already exported in
+the shell win over the file; the app shows which names were read, never values.

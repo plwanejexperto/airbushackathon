@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from .capacity import airport_limit, per_runway_limit
 from .plan import FlightPlan, RecoveryPlan, make_plan
 from .schemas import Scenario
 from .validate import TOL
@@ -30,8 +31,8 @@ class Planner:
         self.gates = {g.id: g for g in s.gates}
         self.gcrews = {c.id: c for c in s.ground_crews}
         ap = scenario.workbook.airport
-        self.cap_airport = ap.max_runway_ops_per_hour
-        self.cap_runway = max(1, ap.max_runway_ops_per_hour // ap.active_runways)
+        self.cap_airport = airport_limit(scenario)
+        self.cap_runway = per_runway_limit(scenario)  # None = per-runway check disabled
         self.min_turn = ap.min_turnaround_min
         self.wake = scenario.workbook.wake
         self._landing_cache: dict = {}
@@ -89,7 +90,7 @@ class Planner:
                             req = max(req, ts)
                         t = max(t, pt + max(req / 60.0, a.runway_occupancy_min))
                 same = sorted((pt for _, prid, pt in placed if prid == rid), reverse=True)
-                if len(same) >= self.cap_runway:
+                if self.cap_runway is not None and len(same) >= self.cap_runway:
                     t = max(t, same[self.cap_runway - 1] + 60.0)
                 allt = sorted((pt for _, _, pt in placed), reverse=True)
                 if len(allt) >= self.cap_airport:

@@ -67,8 +67,19 @@ class SimAssumptions(BaseModel):
     trip_burn_widebody_kg_h: float = Field(7000, gt=0, description="en-route burn used for trip fuel (widebody)")
     spare_fuel_min_range: tuple[int, int] = Field((25, 45), description="seeded spare holding fuel at nominal ETA "
                                                                         "(workbook default 45 = upper bound)")
+    per_runway_share_mode: Literal["even_split", "fixed", "disabled"] = Field(
+        "even_split", description="ASSUMED per-runway movement share layered on the workbook's airport-wide limit: "
+                                  "even_split = limit // active_runways; fixed = per_runway_fixed_ops_per_hour; disabled = no check")
+    per_runway_fixed_ops_per_hour: Optional[int] = Field(None, ge=1, description="movements/hour per runway when mode = fixed")
     time_tolerance_min: float = Field(0.01, gt=0, description="tolerance for equality / sequencing comparisons")
     search_horizon_min: float = Field(600, gt=0, description="planner gives up scheduling beyond this")
+
+
+    @model_validator(mode="after")
+    def _fixed_needs_value(self):
+        if self.per_runway_share_mode == "fixed" and self.per_runway_fixed_ops_per_hour is None:
+            raise ValueError("per_runway_share_mode='fixed' requires per_runway_fixed_ops_per_hour")
+        return self
 
 
 class Interval(BaseModel):
@@ -139,6 +150,14 @@ class GroundCrew(BaseModel):
     available_from_min: float = 0.0
 
 
+class ConnectionPreference(BaseModel):
+    """SIMULATED soft preference of the selected flight (not in the dataset): connecting passengers who need
+    gate arrival by a preferred time. Never a hard constraint; measured as connection_miss_min."""
+    flight_id: str
+    connecting_passengers: int = Field(ge=0)
+    preferred_gate_in_by_min: float
+
+
 class SimulatedConditions(BaseModel):
     seed: int
     assumptions: SimAssumptions
@@ -148,6 +167,7 @@ class SimulatedConditions(BaseModel):
     gates: list[GateResource]
     flight_crews: list[FlightCrew]
     ground_crews: list[GroundCrew]
+    connection: Optional[ConnectionPreference] = None
 
 
 # ---------- WORKBOOK: synthetic planning limits ----------

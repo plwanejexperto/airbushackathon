@@ -1,46 +1,4 @@
-# Python
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-.coverage.*
-htmlcov/
-*.egg-info/
-build/
-dist/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# Credentials
 .env
-.env.*
-!.env.example
-.streamlit/secrets.toml
-
-# Local databases and SQLite sidecar files
-*.db
-*.db-*
-*.sqlite
-*.sqlite-*
-*.sqlite3
-*.sqlite3-*
-
-# Logs
-*.log
-logs/
-
-# Editors and operating systems
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-
-# Generated screenshots and test artifacts
-screenshots/
-test-results/
-playwright-report/
+events.db
+__pycache__/
+.pytest_cache/

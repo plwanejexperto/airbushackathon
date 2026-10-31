@@ -14,8 +14,8 @@ from typing import Optional
 DB_PATH = Path(__file__).resolve().parent.parent / "events.db"
 
 
-def _conn(path: Path = DB_PATH) -> sqlite3.Connection:
-    c = sqlite3.connect(path)
+def _conn(path: Optional[Path] = None) -> sqlite3.Connection:
+    c = sqlite3.connect(path or DB_PATH)  # resolved at call time so DB_PATH can be redirected
     c.execute("""CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL,
         scenario_id TEXT NOT NULL, event_type TEXT NOT NULL, actor TEXT NOT NULL,
@@ -28,7 +28,7 @@ def _conn(path: Path = DB_PATH) -> sqlite3.Connection:
 
 
 def log_event(scenario_id: str, event_type: str, payload: dict, actor: str = "system",
-              path: Path = DB_PATH, dedupe_key: Optional[str] = None) -> bool:
+              path: Optional[Path] = None, dedupe_key: Optional[str] = None) -> bool:
     """Insert one event. Returns False when skipped as a duplicate."""
     c = _conn(path)
     try:
@@ -43,7 +43,7 @@ def log_event(scenario_id: str, event_type: str, payload: dict, actor: str = "sy
         c.close()
 
 
-def read_events(scenario_id: Optional[str] = None, limit: int = 100, path: Path = DB_PATH) -> list[dict]:
+def read_events(scenario_id: Optional[str] = None, limit: int = 100, path: Optional[Path] = None) -> list[dict]:
     q, args = "SELECT id, ts, scenario_id, event_type, actor, payload FROM events", []
     if scenario_id:
         q += " WHERE scenario_id = ?"

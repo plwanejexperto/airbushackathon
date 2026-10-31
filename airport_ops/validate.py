@@ -12,6 +12,8 @@ from typing import Callable, Optional
 from pydantic import BaseModel
 
 from .plan import FlightPlan, RecoveryPlan, ResourceInterval, occupancy_intervals
+from .capacity import airport_limit, per_runway_limit
+from .fuel import fuel_account
 from .schemas import Scenario
 from .workbook import AircraftClass
 
@@ -28,8 +30,8 @@ CONSTRAINTS: dict[str, tuple[str, str]] = {
                  "workbook: wake_separation (nm,s) + assumption: approach_speed_kt, wake_apply_time_floor"),
     "RWY-CAP-AIRPORT": ("Movements in any 60-min window <= max_runway_ops_per_hour",
                         "workbook: airport_capacity.max_runway_ops_per_hour (read as airport-wide)"),
-    "RWY-CAP-RUNWAY": ("Movements per runway in any 60-min window <= even share of airport limit",
-                       "assumption: limit / active_runways"),
+    "RWY-CAP-RUNWAY": ("Movements per runway in any 60-min window <= assumed per-runway share (skipped when disabled)",
+                       "assumption: per_runway_share_mode (even_split | fixed | disabled)"),
     "TAXI-ROUTE": ("Route is connected from the runway exit to the gate", "simulated: taxi graph"),
     "TAXI-TIME": ("Taxi duration >= sum of segment times", "simulated: segment minutes"),
     "TAXI-BLOCK": ("No taxi segment used while blocked", "simulated: taxiway blockages"),
@@ -213,36 +215,35 @@ def _landing(ix: _Ix, fps: list[FlightPlan], c: _Collector):
                                  f"{nm / a.approach_speed_kt * 3600:.0f}s; workbook floor {tmin_s:g}s]"),
                         y.flight_id, rid)
 
-    # runway movement capacity: workbook max_runway_ops_per_hour, read as airport-wide movements/hour
-    limit = ix.ap.max_runway_ops_per_hour
+    # airport-wide movement capacity: workbook max_runway_ops_per_hour (modelled flights only)
+    limit = airport_limit(ix.sc)
     n = max_window_count([p.landing_min for p in fps])
     c.check("RWY-CAP-AIRPORT", n <= limit,
             lambda: f"max {n} movement(s) in any 60-min window vs airport limit {limit}/h (modelled flights only)",
             None, ix.ap.iata_code)
-    share = max(1, limit // ix.ap.active_runways)
-    for rid, items in by_rw.items():
-        n = max_window_count([p.landing_min for p in items])
-        c.check("RWY-CAP-RUNWAY", n <= share,
-                lambda: f"{rid}: max {n} movement(s) in any 60-min window vs share {share}/h "
-                        f"({limit}/h over {ix.ap.active_runways} active runways)", None, rid)
+    # ASSUMED per-runway share (separate from the workbook value; configurable, may be disabled)
+    share = per_runway_limit(ix.sc)
+    if share is not None:
+        for rid, items in by_rw.items():
+            n = max_window_count([p.landing_min for p in items])
+            c.check("RWY-CAP-RUNWAY", n <= share,
+                    lambda: f"{rid}: max {n} movement(s) in any 60-min window vs assumed share {share}/h "
+                            f"(mode {ix.a.per_runway_share_mode})", None, rid)
 
 
 # ----------------------------- fuel -----------------------------
 def _fuel(ix: _Ix, fps: list[FlightPlan], c: _Collector):
+    """Thin wrapper: all arithmetic lives in fuel.fuel_account (documented there)."""
     for p in fps:
         sf = ix.flights[p.flight_id]
-        rate = ix.fc.hold_burn_kg_h(sf.aircraft_class)
-        hold = max(0.0, p.landing_min - sf.earliest_landing_min)  # airborne holding beyond nominal ETA
-        landing_fuel = sf.fuel.fuel_on_board_kg - sf.fuel.trip_fuel_remaining_kg - hold / 60.0 * rate
-        reserve = ix.fc.final_reserve_min / 60.0 * rate
-        cont = ix.fc.contingency_fraction * sf.fuel.trip_fuel_remaining_kg
-        c.check("FUEL-RESERVE", landing_fuel >= reserve - TOL,
-                lambda: f"landing fuel {landing_fuel:.0f} kg after {hold:.1f} min hold @ {rate:.0f} kg/h vs final reserve "
-                        f"{reserve:.0f} kg ({ix.fc.final_reserve_min:g} min)", p.flight_id)
-        c.check("FUEL-CONTINGENCY", landing_fuel >= reserve + cont - TOL,
-                lambda: f"landing fuel {landing_fuel:.0f} kg vs reserve+contingency {reserve + cont:.0f} kg "
-                        f"(contingency {cont:.0f} kg = {ix.fc.contingency_fraction:.0%} of trip {sf.fuel.trip_fuel_remaining_kg:.0f} kg)",
-                p.flight_id)
+        fa = fuel_account(ix.sc, sf, p.landing_min)
+        c.check("FUEL-RESERVE", fa.reserve_margin_kg >= -TOL,
+                lambda: f"landing fuel {fa.landing_fuel_kg:.0f} kg after {fa.hold_min:.1f} min hold @ {fa.hold_burn_kg_h:.0f} kg/h "
+                        f"vs final reserve {fa.final_reserve_kg:.0f} kg ({ix.fc.final_reserve_min:g} min)", p.flight_id)
+        c.check("FUEL-CONTINGENCY", fa.contingency_margin_kg >= -TOL,
+                lambda: f"landing fuel {fa.landing_fuel_kg:.0f} kg vs reserve+contingency "
+                        f"{fa.final_reserve_kg + fa.contingency_kg:.0f} kg (contingency {fa.contingency_kg:.0f} kg = "
+                        f"{ix.fc.contingency_fraction:.0%} of trip {fa.trip_fuel_kg:.0f} kg)", p.flight_id)
 
 
 # ----------------------------- ground stage -----------------------------
