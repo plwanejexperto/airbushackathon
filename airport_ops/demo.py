@@ -57,6 +57,9 @@ def build_demo_scenario(base: Scenario) -> Scenario:
     for c in s.flight_crews:
         c.report_time_min = 250 - fc.flight_crew_max_duty_h * 60
     s.connection = ConnectionPreference(flight_id=sel.flight_id, connecting_passengers=30, preferred_gate_in_by_min=eta + 12)
+    s.connections = [s.connection,
+                     ConnectionPreference(flight_id=heavy.flight_id, connecting_passengers=80, preferred_gate_in_by_min=eta + 40),
+                     ConnectionPreference(flight_id=large.flight_id, connecting_passengers=20, preferred_gate_in_by_min=eta + 45)]
     return rehash_scenario(sc)
 
 
@@ -64,4 +67,4 @@ def is_demo_scenario(sc: Scenario) -> bool:
     s = sc.simulated
     reasons = [i.reason for r in s.runways for i in r.closures] + [i.reason for x in s.taxi_segments for i in x.blockages] \
         + [i.reason for g in s.gates for i in g.resident_occupancy]
-    return any(r.startswith("DEMO:") for r in reasons)
+    return any(r.startswith("DEMO:") for r in reasons) or bool(sc.simulated.departure and "DEMO preset" in sc.simulated.departure.note)

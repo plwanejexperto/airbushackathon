@@ -13,9 +13,9 @@ from pydantic import BaseModel
 
 from .plan import FlightPlan, RecoveryPlan, ResourceInterval, occupancy_intervals
 from .capacity import airport_limit, per_runway_limit
-from .fuel import fuel_account
+from .fuel import fuel_account, gate_fuel_margin_kg, ground_burn_kg
 from .schemas import Scenario
-from .workbook import AircraftClass
+from .workbook import AircraftClass, FlightStatus
 
 TOL = 1e-6
 
@@ -32,6 +32,32 @@ CONSTRAINTS: dict[str, tuple[str, str]] = {
                         "workbook: airport_capacity.max_runway_ops_per_hour (read as airport-wide)"),
     "RWY-CAP-RUNWAY": ("Movements per runway in any 60-min window <= assumed per-runway share (skipped when disabled)",
                        "assumption: per_runway_share_mode (even_split | fixed | disabled)"),
+    "HOLD-AREA": ("Ground waiting after landing happens in a designated safe waiting area", "simulated: hold areas"),
+    "HOLD-CAP": ("Aircraft waiting in a safe area at the same time <= its capacity", "simulated: hold-area capacity"),
+    "FUEL-GROUND": ("Fuel at gate arrival (after taxi + ground wait) >= final reserve",
+                    "workbook: Final fuel reserve + Holding burn; assumption: ground_burn_fraction_of_hold"),
+    "DEP-ARRIVAL-FIXED": ("The agreed arrival part (landing, runway, taxi, gate) is unchanged", "input: agreed arrival plan"),
+    "TASK-SET": ("Every turnaround task is scheduled exactly once", "simulated: turnaround model"),
+    "TASK-DUR": ("Each task lasts at least its work content (widebody scaling, remote-stand bussing)", "simulated: turnaround model"),
+    "TASK-DEPS": ("Tasks start after their predecessors and after gate arrival", "simulated: task dependencies"),
+    "TASK-EQUIP": ("Equipment exists, has the right type and serves one task at a time", "simulated: equipment units"),
+    "READY-TIME": ("Ready time = all tasks done and workbook minimum turnaround met", "workbook: min_turnaround_min + simulated tasks"),
+    "DEP-SEQ": ("ready < push-back/taxi-out < take-off ordering is consistent", "structural + assumption: push-back time"),
+    "DIV-TRIGGER": ("Diversion is justified: the destination cannot accept the aircraft within its fuel limit (or status is not NORMAL)", "computed: destination status + fuel"),
+    "DIV-ALT-SUITABLE": ("The plan lands at the screened, suitable alternate", "workbook capacity/size + computed reach + simulated weather"),
+    "DIV-STATUS": ("The Pilot declares the status the fuel numbers imply (NORMAL / MINIMUM_FUEL / EMERGENCY)", "computed from distance, time and fuel"),
+    "DIV-FUEL-REACH": ("The alternate is reachable from the aircraft's simulated position on the fuel on board", "computed: position, cruise speed, trip burn"),
+    "FUEL-EMERGENCY": ("EMERGENCY: landing fuel > 0 (final reserve already unavailable; safety action has priority)", "computed status EMERGENCY"),
+    "EMERG-PRIORITY": ("EMERGENCY: lands at the earliest feasible slot; no operational convenience delay", "computed status EMERGENCY"),
+    "DEP-NOT-EARLY": ("No take-off before the next flight's scheduled departure", "assumption: no early departure (boarding closure / slot)"),
+    "DEP-TAXI-ROUTE": ("Outbound route is connected from the gate to the departure runway", "simulated: outbound taxi graph"),
+    "DEP-TAXI-BLOCK": ("No outbound taxi segment used while blocked", "simulated: taxiway blockages"),
+    "DEP-TAXI-CONFLICT": ("One aircraft per outbound taxi segment at a time", "assumption: single-lane segments"),
+    "DEP-RWY-AVAIL": ("Departure runway exists and is not closed during the take-off roll", "simulated: runway closures"),
+    "DEP-RWY-OCC": ("Take-off roll does not overlap another movement on that runway (incl. arrivals + gap)", "assumption: departure_roll_min, arrival_departure_gap_min"),
+    "DEP-WAKE": ("Same-runway departure spacing leader -> follower >= workbook min_time_s", "workbook: wake_separation.min_time_s (same runway departures)"),
+    "DEP-CAP": ("Movements (arrivals + departures) in any 60-min window <= airport limit", "workbook: airport_capacity.max_runway_ops_per_hour"),
+    "DEP-CREW-DUTY": ("Flight crew can fly the NEXT flight within its duty limit", "workbook: Flight crew max duty + next flight block time"),
     "TAXI-ROUTE": ("Route is connected from the runway exit to the gate", "simulated: taxi graph"),
     "TAXI-TIME": ("Taxi duration >= sum of segment times", "simulated: segment minutes"),
     "TAXI-BLOCK": ("No taxi segment used while blocked", "simulated: taxiway blockages"),
@@ -129,7 +155,7 @@ class _Ix:
         self.gcrews = {c.id: c for c in s.ground_crews}
 
 
-def validate_plan(scenario: Scenario, plan: RecoveryPlan, *, stages: tuple[str, ...] = ("structure", "land", "fuel", "ground"),
+def validate_plan(scenario: Scenario, plan: RecoveryPlan, *, stages: tuple[str, ...] = ("structure", "land", "fuel", "ground", "depart"),
                   record_passes: bool = True, fail_fast: bool = False) -> ValidationReport:
     """Run the selected check stages. Default = everything, recording passes and failures."""
     ix = _Ix(scenario)
@@ -146,10 +172,16 @@ def validate_plan(scenario: Scenario, plan: RecoveryPlan, *, stages: tuple[str, 
             _structure(ix, plan, c)
         if "land" in stages:
             _landing(ix, fps, c)
+            if scenario.simulated.diversion is not None:
+                from .diversion_checks import check_diversion
+                check_diversion(ix, plan, fps, c)
         if "fuel" in stages:
             _fuel(ix, fps, c)
         if "ground" in stages:
             _ground(ix, plan, fps, c)
+        if "depart" in stages and scenario.simulated.departure is not None:
+            from .departure_checks import check_departure
+            check_departure(ix, plan, fps, c)
     except _Stop:
         pass
     return ValidationReport(proposal_id=plan.proposal_id, scenario_version=scenario.scenario_version,
@@ -233,13 +265,21 @@ def _landing(ix: _Ix, fps: list[FlightPlan], c: _Collector):
 
 # ----------------------------- fuel -----------------------------
 def _fuel(ix: _Ix, fps: list[FlightPlan], c: _Collector):
-    """Thin wrapper: all arithmetic lives in fuel.fuel_account (documented there)."""
+    """Thin wrapper: all arithmetic lives in fuel.fuel_account (documented there). NORMAL: reserve + contingency. MINIMUM_FUEL: reserve
+    enforced, contingency waived. EMERGENCY: landing fuel must be positive (the reserve is already unavailable)."""
     for p in fps:
         sf = ix.flights[p.flight_id]
         fa = fuel_account(ix.sc, sf, p.landing_min)
+        if sf.status == FlightStatus.EMERGENCY:
+            c.check("FUEL-EMERGENCY", fa.landing_fuel_kg >= -TOL, lambda: f"EMERGENCY: landing fuel {fa.landing_fuel_kg:.0f} kg after {fa.hold_min:.1f} min "
+                    f"hold must stay above zero (final reserve {fa.final_reserve_kg:.0f} kg is already unavailable)", p.flight_id)
+            continue
         c.check("FUEL-RESERVE", fa.reserve_margin_kg >= -TOL,
                 lambda: f"landing fuel {fa.landing_fuel_kg:.0f} kg after {fa.hold_min:.1f} min hold @ {fa.hold_burn_kg_h:.0f} kg/h "
                         f"vs final reserve {fa.final_reserve_kg:.0f} kg ({ix.fc.final_reserve_min:g} min)", p.flight_id)
+        if sf.status == FlightStatus.MINIMUM_FUEL:
+            c.check("FUEL-CONTINGENCY", True, lambda: "waived for this aircraft: MINIMUM_FUEL (contingency may be consumed; the final reserve above is still enforced)", p.flight_id)
+            continue
         c.check("FUEL-CONTINGENCY", fa.contingency_margin_kg >= -TOL,
                 lambda: f"landing fuel {fa.landing_fuel_kg:.0f} kg vs reserve+contingency "
                         f"{fa.final_reserve_kg + fa.contingency_kg:.0f} kg (contingency {fa.contingency_kg:.0f} kg = "
@@ -251,6 +291,12 @@ def _ground(ix: _Ix, plan: RecoveryPlan, fps: list[FlightPlan], c: _Collector):
     a, tol = ix.a, ix.a.time_tolerance_min
     ivs: list[ResourceInterval] = []
     ok_routes: set[str] = set()
+    _iv: dict[str, list[ResourceInterval]] = {}
+
+    def intervals(p: FlightPlan) -> list[ResourceInterval]:   # derived occupancy, computed once per flight
+        if p.flight_id not in _iv:
+            _iv[p.flight_id] = occupancy_intervals(p, ix.sc, ix.seg_min)
+        return _iv[p.flight_id]
     for p in fps:
         sf = ix.flights[p.flight_id]
         f = p.flight_id
@@ -294,9 +340,9 @@ def _ground(ix: _Ix, plan: RecoveryPlan, fps: list[FlightPlan], c: _Collector):
             dur = p.taxi_end_min - p.taxi_start_min
             c.check("TAXI-TIME", dur >= total - tol,
                     lambda: f"taxi duration {dur:.1f} min vs route time {total:.1f} min", f)
-            ivs.extend(i for i in occupancy_intervals(p, ix.sc, ix.seg_min))
+            ivs.extend(i for i in intervals(p))
         else:
-            ivs.extend(i for i in occupancy_intervals(p, ix.sc, ix.seg_min) if i.resource_type != "taxi_segment")
+            ivs.extend(i for i in intervals(p) if i.resource_type != "taxi_segment")
 
         # gate compatibility + notice
         g = ix.gates.get(p.gate_id)
@@ -316,11 +362,26 @@ def _ground(ix: _Ix, plan: RecoveryPlan, fps: list[FlightPlan], c: _Collector):
         turn = p.service_end_min - p.gate_in_min
         c.check("TURNAROUND-MIN", turn >= ix.ap.min_turnaround_min - tol,
                 lambda: f"gate time {turn:.1f} min vs {ix.ap.iata_code} minimum {ix.ap.min_turnaround_min} min", f)
-        task_ok = (p.service_start_min >= p.gate_in_min + a.deboard_min - tol and
+        deboard = a.deboard_min + (a.remote_stand_bus_min if (g is not None and g.kind == "remote_stand") else 0.0)
+        task_ok = (p.service_start_min >= p.gate_in_min + deboard - tol and
                    p.service_end_min - p.service_start_min >= sf.service_task_min - tol)
-        c.check("TASK-TIME", task_ok, lambda: f"service t+{p.service_start_min:.1f}..{p.service_end_min:.1f} "
-                f"({p.service_end_min - p.service_start_min:.1f} min) vs deboard {a.deboard_min:g} min after gate arrival "
-                f"+ task {sf.service_task_min:g} min", f)
+        if ix.sc.simulated.departure is None:   # departure sessions replace the aggregate service block with the task model
+            c.check("TASK-TIME", task_ok, lambda: f"service t+{p.service_start_min:.1f}..{p.service_end_min:.1f} "
+                    f"({p.service_end_min - p.service_start_min:.1f} min) vs deboard {deboard:g} min after gate arrival "
+                    f"+ task {sf.service_task_min:g} min", f)
+
+        # safe ground waiting area + ground-phase fuel (a long wait / longer taxi must not exhaust the reserve)
+        wait = p.taxi_start_min - (p.landing_min + a.runway_occupancy_min)
+        if ix.sc.simulated.hold_areas and wait > tol:
+            areas = {h.id for h in ix.sc.simulated.hold_areas}
+            c.check("HOLD-AREA", p.hold_area_id in areas, lambda: (f"waits {wait:.1f} min in {p.hold_area_id}" if p.hold_area_id in areas else
+                    f"waits {wait:.1f} min after landing but hold_area_id={p.hold_area_id!r} is not a designated safe area {sorted(areas)}"),
+                    f, p.hold_area_id)
+        gm = gate_fuel_margin_kg(ix.sc, sf, p.landing_min, p.gate_in_min)
+        if sf.status != FlightStatus.NORMAL:          # MINIMUM_FUEL / EMERGENCY: the reserve is at its limit at touchdown; taxi fuel only has to stay positive
+            gm += fuel_account(ix.sc, sf, p.landing_min).final_reserve_kg
+        c.check("FUEL-GROUND", gm >= -TOL, lambda: f"fuel at gate arrival {gm:+.1f} kg vs final reserve after "
+                f"{p.gate_in_min - p.landing_min:.1f} min on the ground (burn {ground_burn_kg(ix.sc, sf, p.landing_min, p.gate_in_min):.0f} kg)", f)
 
         # flight crew duty + ground crew availability
         fcrew = ix.fcrews.get(p.flight_crew_id)
@@ -352,6 +413,13 @@ def _ground(ix: _Ix, plan: RecoveryPlan, fps: list[FlightPlan], c: _Collector):
                 lambda: f"{gid} shift ends t+{shift_end:.1f}; last job ends t+{last:.1f}: overtime {ot:.1f} min "
                         f"(cap {a.max_ground_overtime_min:g}, billed {ix.fc.ground_overtime_multiplier:g}x)", None, gid)
 
+    # safe-area capacity: aircraft waiting at the same time
+    for h in ix.sc.simulated.hold_areas:
+        spans = [(i.start_min, i.end_min, i.flight_id) for p in fps for i in intervals(p)
+                 if i.resource_type == "hold_area" and i.resource_id == h.id]
+        peak = max((sum(1 for s2, e2, _ in spans if s2 < e1 - tol and e2 > s1 + tol) for s1, e1, _ in spans), default=0)
+        c.check("HOLD-CAP", peak <= h.capacity, lambda: f"{h.id}: peak {peak} aircraft waiting vs capacity {h.capacity}", None, h.id)
+
     # overlap checks over derived occupancy + simulated external occupancy
     for rid, g in ix.gates.items():
         ivs.extend(ResourceInterval(resource_type="gate", resource_id=rid, flight_id=None, start_min=i.start_min,
@@ -363,7 +431,7 @@ def _ground(ix: _Ix, plan: RecoveryPlan, fps: list[FlightPlan], c: _Collector):
         if p.flight_id not in ok_routes:
             continue
         hits = []
-        for i in occupancy_intervals(p, ix.sc, ix.seg_min):
+        for i in intervals(p):
             if i.resource_type != "taxi_segment":
                 continue
             for b in ix.segs[i.resource_id].blockages:

@@ -23,5 +23,8 @@ REFERENCE_DESCRIPTION = ("ILLUSTRATIVE reference plan: nominal ETA landing, orig
 
 
 def reference_plan(sc: Scenario) -> RecoveryPlan:
+    if sc.simulated.departure is not None:
+        from .turnaround import naive_departure_plan
+        return make_plan(sc, REFERENCE_SOURCE, naive_departure_plan(sc).flights)
     base = Planner(sc).naive_plan()
     return make_plan(sc, REFERENCE_SOURCE, base.flights)

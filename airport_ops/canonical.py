@@ -23,7 +23,9 @@ DECIMALS: dict[str, int] = {
     "landing_delay_min": 2, "landing_min": 2, "gate_in_min": 2, "service_start_min": 2, "service_end_min": 2,
     "service_wait_min": 2, "connection_miss_min": 2, "max_landing_delay_min": 2, "total_landing_delay_min": 2,
     "total_service_wait_min": 2, "ground_overtime_min": 2, "weighted_landing_delay": 2, "total_cost": 2,
-    "gate_changes": 0, "runway_changes": 0, "reserve_margin_kg": 6, "contingency_margin_kg": 6,
+    "ready_min": 2, "takeoff_min": 2, "departure_delay_min": 2, "turnaround_min": 2, "total_departure_delay_min": 2,
+    "weighted_departure_delay": 2, "max_departure_delay_min": 2,
+    "gate_changes": 0, "runway_changes": 0, "reserve_margin_kg": 6, "contingency_margin_kg": 6, "gate_fuel_margin_kg": 6,
 }
 
 

@@ -12,7 +12,7 @@ import random
 import zlib
 from typing import Optional
 
-from .schemas import (CapacitySubset, ConnectionPreference, FlightCrew, FuelState, GateResource, GroundCrew, HistoricalFlight,
+from .schemas import (CapacitySubset, ConnectionPreference, FlightCrew, FuelState, GateResource, GroundCrew, HistoricalFlight, HoldArea,
                       Interval, RunwayResource, Scenario, SimAssumptions, SimFlight, SimulatedConditions,
                       TaxiSegment, WorkbookLimits)
 from .workbook import AircraftClass, WakeCategory, WorkbookRules
@@ -62,7 +62,7 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
     g_ids = [f"GATE-{i + 1}" for i in range(n_g)]
     g_classes = [AircraftClass.NARROWBODY, AircraftClass.WIDEBODY, AircraftClass.NARROWBODY][:n_g]
     subset = CapacitySubset(total_runways=ap.active_runways, modelled_runways=n_r, total_gates=ap.gates,
-                            modelled_gates=n_g, spare_gates_at_any_time=ap.spare_gates_at_any_time)
+                            modelled_gates=n_g, modelled_remote_stands=1, spare_gates_at_any_time=ap.spare_gates_at_any_time)
 
     # --- simulated closures / occupancy (historical delays only influence *whether*) ---
     runways = [RunwayResource(id=r) for r in rw_ids]
@@ -81,6 +81,9 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
              TaxiSegment(id="TWY-D", from_node="HUB", to_node="APRON", minutes=3)]
     segs += [TaxiSegment(id=f"TWY-G{i + 1}", from_node="APRON", to_node=f"GATE-{g}", minutes=rng.randint(1, 2))
              for i, g in enumerate(g_ids)]
+    # SIMULATED remote stand (the workbook has no stand data): accepts any aircraft class, reached by a longer spur from the apron
+    gates.append(GateResource(id="STAND-1", kind="remote_stand", terminal="REMOTE", max_aircraft_class=AircraftClass.WIDEBODY))
+    segs.append(TaxiSegment(id="TWY-S1", from_node="APRON", to_node="GATE-STAND-1", minutes=4))
     blocked = rng.choice([s for s in segs if s.id in ("TWY-C", "TWY-D")])
     b0 = rng.randint(5, 15)
     blocked.blockages.append(Interval(start_min=b0, end_min=b0 + rng.randint(15, 30), reason="simulated taxiway blockage"))
@@ -101,7 +104,7 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
     hi_task = max(1, int(ap.min_turnaround_min - a.deboard_min))
     for (fid, src, cat, eta), gc in zip(specs, orig_crews):
         cls = _class_of(cat)
-        compat = [g for g in gates if cls == AircraftClass.NARROWBODY or g.max_aircraft_class == AircraftClass.WIDEBODY]
+        compat = [g for g in gates if g.kind == "gate" and (cls == AircraftClass.NARROWBODY or g.max_aircraft_class == AircraftClass.WIDEBODY)]
         og = next((g for g in compat if g.id not in used_gates), compat[0] if compat else gates[0])
         used_gates.add(og.id)
         spare = rng.randint(*a.spare_fuel_min_range)
@@ -124,8 +127,11 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
     sel = flights[0]
     conn = ConnectionPreference(flight_id=sel.flight_id, connecting_passengers=rng.randint(10, 40),
                                 preferred_gate_in_by_min=sel.earliest_landing_min + rng.randint(20, 45))
+    conns = [conn] + [ConnectionPreference(flight_id=f.flight_id, connecting_passengers=rng.randint(10, 40),
+                                           preferred_gate_in_by_min=f.earliest_landing_min + rng.randint(20, 45)) for f in flights[1:]]
     sim = SimulatedConditions(seed=seed, assumptions=a, flights=flights, runways=runways, taxi_segments=segs,
-                              gates=gates, flight_crews=flight_crews, ground_crews=gcs, connection=conn)
+                              gates=gates, flight_crews=flight_crews, ground_crews=gcs, connection=conn, connections=conns,
+                              hold_areas=[HoldArea(id="HOLD-1", capacity=2)])
     wb = WorkbookLimits(airport=ap, wake=rules.wake, fuel_crew=fc, capacity_subset=subset)
     content = {"historical": h.model_dump(mode="json"), "workbook": wb.model_dump(mode="json"),
                "simulated": sim.model_dump(mode="json")}

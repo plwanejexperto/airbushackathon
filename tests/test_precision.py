@@ -85,7 +85,7 @@ def test_prompt_values_come_from_the_canonical_representation(scenario):
         cand = next(c for c in pool if c.proposal_id == opt["proposal_id_if_proposed"])
         assert opt["consequences"]["weighted_landing_delay"] == quantise("weighted_landing_delay", cand.metrics["plan"]["weighted_landing_delay"])
     fa = fuel_account(scenario, scenario.simulated.flights[0], scenario.simulated.flights[0].earliest_landing_min)
-    shown = agents.pilot.domain_view(ctx)["selected_flight"]["fuel_at_nominal_eta"]
+    shown = agents.pilot.domain_view(ctx)["your_aircraft"]["fuel_at_nominal_eta"]
     assert shown["contingency_margin_kg"] == quantise("contingency_margin_kg", fa.contingency_margin_kg)
 
 
@@ -128,7 +128,7 @@ def test_fuel_reserve_deficit_of_a_fraction_of_a_gram_is_never_hidden_by_roundin
     fa = fuel_account(sc, f1, t_r + 1e-5)
     assert -0.001 < fa.reserve_margin_kg < 0
     assert round(fa.reserve_margin_kg, 2) == 0 and round(fa.reserve_margin_kg, 3) == -0.0   # a 2- or 3-decimal display would read "0"
-    assert {r.constraint_id for r in short.failures} == {"FUEL-RESERVE", "FUEL-CONTINGENCY"}   # ...but the hard check rejects it
+    assert {r.constraint_id for r in short.failures} == {"FUEL-RESERVE", "FUEL-CONTINGENCY", "FUEL-GROUND"}   # ...but the hard checks reject it
     # the preference condition sees the same deficit (6 decimals), so a rounded display cannot be used to accept it either
     m = plan_metrics(sc, _late_plan(sc, t_r + 1e-5))
     assert evaluate_condition(plan_cond("reserve_margin_kg", ConditionOp.GE, 0.0, f1.flight_id), m).satisfied is False

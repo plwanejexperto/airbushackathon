@@ -8,6 +8,7 @@ import json
 from . import llm
 from .changes import build_change_log
 from .demo import is_demo_scenario
+
 from .negotiation import FREEZE_RULE
 from .negotiation_types import NegotiationResult
 from .schemas import Scenario
@@ -30,11 +31,18 @@ def export_session(sc: Scenario, res: NegotiationResult) -> dict:
     return {
         "export_format": "airport-negotiation-session/1",
         "scenario": {"scenario_id": sc.scenario_id, "scenario_version": res.scenario_version, "demo_preset": is_demo_scenario(sc),
+                     "kind": "diversion" if sc.simulated.diversion else "turnaround_departure" if sc.simulated.departure else "arrival",
                      "airport": sc.workbook.airport.iata_code,
+                     "diversion": sc.simulated.diversion.model_dump(mode="json") if sc.simulated.diversion else None,
+                     "departure": ({"next_flights": [n.model_dump(mode="json") for n in sc.simulated.departure.next_flights],
+                                    "scheduled_departure_min": sc.simulated.departure.scheduled_departure_min,
+                                    "arrival_plan_source": sc.simulated.departure.arrival_plan_source, "note": sc.simulated.departure.note}
+                                   if sc.simulated.departure else None),
                      "note": "times are simulated minutes from scenario start (t+N); not historical actual times"},
         "session": {"session_id": res.session_id, "mode": res.mode, "model": res.model_name,
                     "live_model_calls": res.mode == "live", "elapsed_s": res.elapsed_s, "deadline_s": res.deadline_s,
-                    "turns_completed": res.turns_completed, "messages": len(res.messages)},
+                    "turns_completed": res.turns_completed, "messages": len(res.messages),
+                    "participants": [p.model_dump(mode="json") for p in res.participants]},
         "selected_historical_disruption": sc.historical.model_dump(mode="json"),
         "initial_reference_plan": {"plan": res.reference_plan.model_dump(mode="json") if res.reference_plan else None,
                                    "validation": _val(res.reference_validation),
@@ -53,7 +61,8 @@ def export_session(sc: Scenario, res: NegotiationResult) -> dict:
                     "fallback_reason": res.fallback_reason.value if res.fallback_reason else None,
                     "fallback_detail": res.fallback_detail, "fallback_outcome": fb.outcome.value if fb else None,
                     "fallback_search_status": fb.search_status.value if fb else None,
-                    "fallback_reasons": fb.reasons if fb else None, "invalidation": res.invalidation_detail},
+                    "fallback_reasons": fb.reasons if fb else None, "invalidation": res.invalidation_detail,
+                    "escalation_required": res.status.value == "NO_FEASIBLE_PLAN"},
         "model_attempts": [a.model_dump(mode="json") for a in res.attempts],
         "tool_calls": [t.model_dump(mode="json") for t in res.tool_calls],
         "validation_events": [v.model_dump(mode="json") for v in res.validations],

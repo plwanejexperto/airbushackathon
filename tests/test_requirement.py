@@ -119,7 +119,8 @@ def test_change_log_labels_landing_and_gate_arrival_separately_with_attribution_
     assert "landing_min" in s["reference"] and "gate_arrival_min" in s["reference"]
     assert "NOT the negotiated result" in s["historical_context_only"]["note"]
     assert any("not modelled" in n for n in cl.notes)                            # no invented flight-plan functionality
-    assert [l["proposer"] for l in cl.lineage] == ["ATC", "PILOT"] and cl.final_kind == "agent consensus"
+    lin = [l["proposer"] for l in cl.lineage]
+    assert lin[:2] == ["ATC", "PILOT"] and len(lin) >= 2 and cl.final_kind == "agent consensus"   # opening plan, then a counter-offer chain
     assert [p.proposal_id for p in lineage_of(run, run.final_plan.proposal_id)][-1] == run.final_plan.proposal_id
 
 
@@ -150,7 +151,9 @@ def test_negotiation_is_not_a_rubber_stamp_of_a_preselected_winner(demo, run):
     assert not any(m.type == MessageType.ACCEPT and m.proposal_id == first.proposal_id for m in run.messages)
     assert sum(m.type == MessageType.COUNTER_PROPOSE for m in run.messages) >= 2
     # the Pilot's plan was countered again by ATC and accepted/rejected by others on its merits, via stated conditions
-    assert any(m.type == MessageType.ACCEPT and m.sender == AgentRole.GROUND and m.turn == 1 for m in run.messages)
+    assert len({m.sender for m in run.messages if m.plan is not None}) >= 2                      # several agents authored plans
+    by_prop = {p.proposal_id: p.proposer for p in run.proposals}
+    assert any(m.type == MessageType.ACCEPT and m.turn <= 2 and by_prop[m.proposal_id] != m.sender for m in run.messages)  # someone adopted another agent's plan
     assert any(d.changed_preference and d.observed_delta for d in run.decisions)
 
 

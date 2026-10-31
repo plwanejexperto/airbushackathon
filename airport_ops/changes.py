@@ -24,19 +24,29 @@ LABELS = {
     "gate_id": "Gate assignment",
     "runway_id": "Runway",
     "taxi_route": "Taxi route (modelled taxi graph)",
+    "hold_area_id": "Ground waiting area (safe)",
     "ground_crew_id": "Ground crew",
     "service_start_min": "Service start (t+ min)",
     "service_end_min": "Service end (t+ min)",
+    "ready_min": "Aircraft ready for departure (t+ min)",
+    "dep_runway_id": "Departure runway",
+    "dep_taxi_route": "Outbound taxi route (modelled taxi graph)",
+    "takeoff_min": "Take-off time (t+ min)",
 }
 FIELD_CONSTRAINTS = {
     "landing_min": ["WAKE-SEP", "RWY-OCC", "RWY-AVAIL", "RWY-CAP-AIRPORT", "RWY-CAP-RUNWAY", "FUEL-RESERVE", "FUEL-CONTINGENCY"],
     "runway_id": ["RWY-AVAIL", "WAKE-SEP", "RWY-OCC"],
     "taxi_route": ["TAXI-BLOCK", "TAXI-CONFLICT", "TAXI-ROUTE"],
-    "gate_id": ["GATE-OVERLAP", "GATE-COMPAT", "GATE-NOTICE"],
+    "gate_id": ["GATE-OVERLAP", "GATE-COMPAT", "GATE-NOTICE", "FUEL-GROUND"],
+    "hold_area_id": ["HOLD-AREA", "HOLD-CAP", "FUEL-GROUND"],
     "gate_in_min": ["GATE-OVERLAP", "TAXI-BLOCK", "TAXI-CONFLICT"],
     "ground_crew_id": ["CREW-OVERLAP", "CREW-GROUND-SHIFT", "CREW-GROUND-AVAIL"],
     "service_start_min": ["CREW-OVERLAP", "TASK-TIME"],
     "service_end_min": ["CREW-OVERLAP", "TURNAROUND-MIN", "CREW-GROUND-SHIFT"],
+    "ready_min": ["TASK-DEPS", "TASK-EQUIP", "READY-TIME", "CREW-OVERLAP", "TURNAROUND-MIN"],
+    "dep_runway_id": ["DEP-RWY-AVAIL", "DEP-WAKE", "DEP-RWY-OCC"],
+    "dep_taxi_route": ["DEP-TAXI-BLOCK", "DEP-TAXI-CONFLICT", "DEP-TAXI-ROUTE"],
+    "takeoff_min": ["DEP-WAKE", "DEP-RWY-OCC", "DEP-RWY-AVAIL", "DEP-CREW-DUTY", "DEP-NOT-EARLY", "DEP-CAP"],
 }
 Value = Union[float, str]
 
@@ -71,7 +81,11 @@ class ChangeLog(BaseModel):
 
 def _val(fp: FlightPlan, field: str) -> Value:
     v = getattr(fp, field)
-    return " > ".join(v) if field == "taxi_route" else (v if isinstance(v, str) else float(v))
+    if v is None:
+        return "none"
+    if isinstance(v, list):
+        return " > ".join(v)
+    return v if isinstance(v, str) else float(v)
 
 
 def diff_plans(before: RecoveryPlan, after: RecoveryPlan) -> list[tuple[str, str, Value, Value]]:
@@ -116,6 +130,15 @@ def lineage_of(res: NegotiationResult, pid: str) -> list[ProposalRecord]:
     return list(reversed(chain))
 
 
+def _snapshot(p):
+    if p is None:
+        return None
+    d = {"landing_min": p.landing_min, "gate_arrival_min": p.gate_in_min, "gate": p.gate_id, "runway": p.runway_id, "taxi_route": " > ".join(p.taxi_route)}
+    if p.takeoff_min is not None:
+        d.update({"ready_min": p.ready_min, "takeoff_min": p.takeoff_min, "dep_runway": p.dep_runway_id})
+    return d
+
+
 def build_change_log(sc: Scenario, res: NegotiationResult) -> ChangeLog:
     ref, final = res.reference_plan, res.final_plan
     log = ChangeLog(reference_plan_id=ref.proposal_id if ref else "", final_plan_id=final.proposal_id if final else None,
@@ -157,10 +180,7 @@ def build_change_log(sc: Scenario, res: NegotiationResult) -> ChangeLog:
     h = sc.historical
     log.selected_flight = {
         "flight_id": sel.flight_id, "nominal_eta_min": sel.earliest_landing_min,
-        "reference": {"landing_min": rp.landing_min, "gate_arrival_min": rp.gate_in_min, "gate": rp.gate_id, "runway": rp.runway_id,
-                      "taxi_route": " > ".join(rp.taxi_route)} if rp else None,
-        "revised": {"landing_min": fp.landing_min, "gate_arrival_min": fp.gate_in_min, "gate": fp.gate_id, "runway": fp.runway_id,
-                    "taxi_route": " > ".join(fp.taxi_route)} if fp else None,
+        "reference": _snapshot(rp), "revised": _snapshot(fp),
         "changed": {c.field: [c.before, c.after] for c in log.final_changes if c.flight_id == sel.flight_id},
         "proposed_by": {c.field: c.proposed_by for c in log.final_changes if c.flight_id == sel.flight_id},
         "historical_context_only": {"scheduled_arrival": h.scheduled_arrival, "actual_arrival": h.actual_arrival,

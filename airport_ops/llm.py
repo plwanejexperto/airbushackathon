@@ -106,6 +106,7 @@ class ModelRequest:
     timeout_s: float
     attempt: int = 1             # 1 = first try, 2 = the single schema-repair retry
     repair_error: Optional[str] = None
+    agent_id: str = ""            # unique agent ("PILOT@DL1205"); equals the role name in legacy sessions
 
 
 @dataclass

@@ -41,6 +41,7 @@ def calm(scenario):
         x.blockages = []
     for g in s.gates:
         g.resident_occupancy = []
+    s.hold_areas = []   # legacy implicit waiting: hand-written plans in these tests do not name a waiting area
     cats = [WakeCategory.LARGE, WakeCategory.HEAVY, WakeCategory.LARGE]
     for f, cat in zip(s.flights, cats):
         f.wake_category, f.earliest_landing_min = cat, 20.0
@@ -94,3 +95,24 @@ def _never_read_real_dotenv(monkeypatch, tmp_path):
     from airport_ops import llm
     monkeypatch.setenv("NEGOTIATION_ENV_FILE", str(tmp_path / "no-such.env"))
     llm.LOADED_FROM_FILE.clear()
+
+
+@pytest.fixture(scope="session")
+def raw_flights():
+    import pandas as pd
+    from airport_ops import data
+    return pd.read_csv(data.FLIGHTS_CSV, dtype={"ORIGIN_AIRPORT": str, "DESTINATION_AIRPORT": str, "AIRLINE": str}, low_memory=False)
+
+
+@pytest.fixture(scope="session")
+def dep_sc_session(rules, flights_df):
+    """Turnaround + departure scenario built on the deterministic fallback arrival plan of the default scenario."""
+    from airport_ops.fallback import run_fallback
+    from airport_ops.turnaround import build_departure_scenario
+    asc = build_scenario(data.to_historical(flights_df.loc[data.default_index(flights_df)]), rules)
+    return build_departure_scenario(asc, run_fallback(asc).plan, flights_df, plan_source="fallback")
+
+
+@pytest.fixture()
+def dep_sc(dep_sc_session):
+    return dep_sc_session.model_copy(deep=True)

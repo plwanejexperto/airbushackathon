@@ -29,7 +29,14 @@ Initial state (scenario.py) is built so that nothing is counted twice:
        max hold before the final reserve is touched = spare_min + contingency_kg / hold_burn_kg_h * 60
 No rounding is applied to stored fuel values, so these boundaries are exact.
 
-Not modelled (stated, not hidden): taxi-in/APU fuel, alternate fuel, weight-dependent burn.
+4. After touchdown, landing -> gate arrival (taxi + ground waiting)
+       ground_burn_kg = hold_burn_kg_h * ground_burn_fraction_of_hold * (gate_in - landing) / 60     [ASSUMPTION: the fraction]
+       fuel_at_gate   = landing_fuel_kg - ground_burn_kg
+   FUEL-GROUND : fuel_at_gate >= final_reserve_kg   (assumption, NORMAL status only: the final reserve must also survive the ground phase, so a long
+   ground wait or a longer taxi route that exhausts the reserve is rejected; a shorter route that must wait for a blockage can lose
+   to a longer route that does not).
+
+Not modelled (stated, not hidden): APU fuel, alternate fuel (outside diversion sessions), weight-dependent burn.
 """
 from __future__ import annotations
 
@@ -81,3 +88,14 @@ def latest_landing_min(sc: Scenario, sf: SimFlight, *, protect_contingency: bool
     a = fuel_account(sc, sf, sf.earliest_landing_min)
     return sf.earliest_landing_min + (a.max_hold_min_before_contingency if protect_contingency
                                       else a.max_hold_min_before_reserve)
+
+
+def ground_burn_kg(sc: Scenario, sf: SimFlight, landing_min: float, gate_in_min: float) -> float:
+    rate = sc.workbook.fuel_crew.hold_burn_kg_h(sf.aircraft_class) * sc.simulated.assumptions.ground_burn_fraction_of_hold
+    return rate * max(0.0, gate_in_min - landing_min) / 60.0
+
+
+def gate_fuel_margin_kg(sc: Scenario, sf: SimFlight, landing_min: float, gate_in_min: float) -> float:
+    """Fuel at gate arrival above the final reserve (kg)."""
+    fa = fuel_account(sc, sf, landing_min)
+    return fa.reserve_margin_kg - ground_burn_kg(sc, sf, landing_min, gate_in_min)

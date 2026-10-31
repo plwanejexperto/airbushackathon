@@ -8,7 +8,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from .fallback import FallbackResult
-from .messages import AgentRole, Condition, MessageType, NegotiationMessage, Tradeoff
+from .messages import AgentRole, Condition, MessageType, NegotiationMessage, Participant, Tradeoff
 from .plan import RecoveryPlan
 from .schemas import HistoricalFlight, Scenario
 from .validate import ValidationReport
@@ -37,6 +37,7 @@ class ProposalRecord(BaseModel):
     proposal_id: str
     version_no: int
     proposer: AgentRole
+    proposer_id: str = ""
     turn: int
     seq: int
     referenced_proposal_id: Optional[str]
@@ -56,6 +57,7 @@ class ModelAttempt(BaseModel):
     session_id: str
     turn: int
     role: AgentRole
+    agent_id: str = ""
     attempt: int
     kind: str                       # initial | schema_repair
     outcome: str                    # ok | schema_error | timeout | api_error
@@ -73,6 +75,7 @@ class DecisionRecord(BaseModel):
     session_id: str
     seq: int
     sender: AgentRole
+    agent_id: str = ""
     type: MessageType
     proposal_id: str
     previous_proposal_id: Optional[str]
@@ -89,6 +92,7 @@ class ToolCallRecord(BaseModel):
     turn: int
     seq: int
     role: AgentRole
+    agent_id: str = ""
     tool: str
     summary: dict = Field(default_factory=dict)
 
@@ -105,6 +109,7 @@ class ValidationEvent(BaseModel):
 
 class Vote(BaseModel):
     role: AgentRole
+    agent_id: str = ""
     seq: Optional[int] = None
     type: Optional[MessageType] = None
     proposal_id: Optional[str] = None
@@ -119,6 +124,7 @@ class NegotiationResult(BaseModel):
     scenario_id: str
     scenario_version: str
     status: FinalStatus
+    participants: list[Participant] = Field(default_factory=list)
     turns_completed: int
     messages: list[NegotiationMessage]
     proposals: list[ProposalRecord]
@@ -159,8 +165,15 @@ class AgentContext:
     historical: HistoricalFlight
     messages: list[NegotiationMessage]
     proposals: list[ProposalRecord]
-    standing: dict[AgentRole, list[Condition]]     # each agent's most recently stated conditions
+    standing: dict                                 # agent_id -> that agent's most recently stated conditions
     allowed_types: list[MessageType]
     reference: Optional[dict] = None               # initial reference plan view (plan summary + validation evidence)
     frozen: Optional[ProposalRecord] = None        # turn 3 only
     repair_error: Optional[str] = None
+    agent: Optional[Participant] = None            # who is speaking (None = legacy: the bare role)
+    participants: list = field(default_factory=list)
+    require_report: bool = False
+
+    @property
+    def who(self) -> Participant:
+        return self.agent or Participant(agent_id=self.role.value, role=self.role)

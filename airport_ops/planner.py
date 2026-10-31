@@ -30,6 +30,7 @@ class Planner:
         self.segs = {x.id: x for x in s.taxi_segments}
         self.gates = {g.id: g for g in s.gates}
         self.gcrews = {c.id: c for c in s.ground_crews}
+        self.hold_areas = list(s.hold_areas)
         ap = scenario.workbook.airport
         self.cap_airport = airport_limit(scenario)
         self.cap_runway = per_runway_limit(scenario)  # None = per-runway check disabled
@@ -150,16 +151,20 @@ class Planner:
                 off += self.segs[sid].minutes
             gc = self.gcrews[cid]
             free = max(gc.available_from_min, crew_end[cid] + a.ground_crew_transfer_min if cid in crew_end else gc.available_from_min)
-            ss = max(gate_in + a.deboard_min, free)
+            deboard = a.deboard_min + (a.remote_stand_bus_min if self.gates[gid].kind == "remote_stand" else 0.0)
+            ss = max(gate_in + deboard, free)
             se = max(ss + sf.service_task_min, gate_in + self.min_turn)
             gate_end[gid] = se
             crew_end[cid] = se
-            plans.append(FlightPlan(flight_id=fid, runway_id=rid, landing_min=land[fid], taxi_route=segs,
+            wait = s - (land[fid] + a.runway_occupancy_min)
+            hold = self.hold_areas[0].id if (self.hold_areas and wait > a.time_tolerance_min) else None
+            plans.append(FlightPlan(flight_id=fid, runway_id=rid, landing_min=land[fid], taxi_route=segs, hold_area_id=hold,
                                     taxi_start_min=s, taxi_end_min=gate_in, gate_id=gid, gate_in_min=gate_in,
                                     service_start_min=ss, service_end_min=se, ground_crew_id=cid,
                                     flight_crew_id=sf.flight_crew_id))
         plans.sort(key=lambda p: [f.flight_id for f in self.sc.simulated.flights].index(p.flight_id))
-        return make_plan(self.sc, source, plans)
+        dv = self.sc.simulated.diversion
+        return make_plan(self.sc, source, plans, declared_status=dv.computed_status if dv else None, airport=dv.alternate_airport if dv else None)
 
     # ---- naive baseline ----
     def naive_plan(self) -> RecoveryPlan:

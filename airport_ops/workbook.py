@@ -40,6 +40,13 @@ class AircraftClass(str, Enum):
     WIDEBODY = "widebody"      # workbook: "A330/777 class"
 
 
+class FlightStatus(str, Enum):
+    """Fuel/emergency status. A diversion does NOT imply an emergency."""
+    NORMAL = "NORMAL"              # reserve + contingency intact at the intended landing
+    MINIMUM_FUEL = "MINIMUM_FUEL"  # contingency would be consumed; final reserve still intact; no further delay acceptable
+    EMERGENCY = "EMERGENCY"        # final reserve cannot be protected (or an emergency is declared): safety action has priority
+
+
 class WakeCategory(str, Enum):
     SUPER = "Super"
     HEAVY = "Heavy"

@@ -25,7 +25,9 @@ def test_valid_plan_passes_every_constraint(good):
     rep = validate_plan(sc, plan)
     assert rep.passed, [(r.constraint_id, r.flight_id, r.explanation) for r in rep.failures]
     ids = {r.constraint_id for r in rep.results}
-    assert ids == set(CONSTRAINTS) - {"GATE-NOTICE"}  # notice only applies when a gate is changed
+    not_arrival = {c for c in CONSTRAINTS if c.startswith(("DEP-", "DIV-", "EMERG", "FUEL-EMERGENCY")) or c in ("TASK-SET", "TASK-DUR", "TASK-DEPS", "TASK-EQUIP", "READY-TIME")}
+    # notice: only if a gate changes; hold checks: only if waiting areas exist; departure/diversion groups: only in those session kinds
+    assert ids == set(CONSTRAINTS) - {"GATE-NOTICE", "HOLD-AREA", "HOLD-CAP"} - not_arrival
     assert all(r.explanation and r.basis for r in rep.results)
 
 

@@ -45,6 +45,8 @@ class CostWeights(BaseModel):
     landing_delay_per_min_x_priority: float = 1.0   # (landing - nominal ETA) * priority
     exit_hold_per_min_x_priority: float = 0.5       # waiting at runway exit before taxiing * priority
     service_wait_per_min_x_priority: float = 0.5    # gate arrival + deboard -> service start (crew/gate waiting) * priority
+    departure_delay_per_min_x_priority: float = 1.0  # take-off after the NEXT flight's scheduled departure * priority
+    remote_stand: float = 4.0                       # per flight parked at a remote stand (bussing)
     gate_change: float = 10.0                       # per flight not at its original gate
     runway_change: float = 2.0                      # per flight not on its original runway
     ground_overtime_per_min: float = 1.0            # x workbook overtime multiplier (1.5)
@@ -69,6 +71,7 @@ def plan_cost(sc: Scenario, plan: RecoveryPlan, w: CostWeights) -> dict[str, flo
     flights = {f.flight_id: f for f in sc.simulated.flights}
     a = sc.simulated.assumptions
     fcr = sc.workbook.fuel_crew
+    kinds = {g.id: g.kind for g in sc.simulated.gates}
     bd = Counter()
     for p in plan.flights:
         sf = flights[p.flight_id]
@@ -77,7 +80,14 @@ def plan_cost(sc: Scenario, plan: RecoveryPlan, w: CostWeights) -> dict[str, flo
         bd["service_wait"] += w.service_wait_per_min_x_priority * sf.priority * (
             p.service_start_min - (p.gate_in_min + a.deboard_min))
         bd["gate_change"] += w.gate_change * (p.gate_id != sf.original_gate_id)
+        bd["remote_stand"] += w.remote_stand * (kinds.get(p.gate_id) == "remote_stand")
         bd["runway_change"] += w.runway_change * (p.runway_id != sf.original_runway_id)
+    dep = sc.simulated.departure
+    if dep is not None:
+        for p in plan.flights:
+            if p.takeoff_min is not None:
+                bd["departure_delay"] += w.departure_delay_per_min_x_priority * flights[p.flight_id].priority * max(
+                    0.0, p.takeoff_min - dep.scheduled_departure_min.get(p.flight_id, p.takeoff_min))
     for g in sc.simulated.ground_crews:
         mine = [p for p in plan.flights if p.ground_crew_id == g.id]
         if mine:
@@ -90,6 +100,9 @@ def plan_cost(sc: Scenario, plan: RecoveryPlan, w: CostWeights) -> dict[str, flo
 def run_fallback(scenario: Scenario, *, time_budget_s: float = 30.0, max_evaluations: Optional[int] = None,
                  weights: Optional[CostWeights] = None) -> FallbackResult:
     w = weights or CostWeights()
+    if scenario.simulated.departure is not None:        # turnaround + departure sessions have their own (small) candidate set
+        from .turnaround import run_departure_fallback
+        return run_departure_fallback(scenario, time_budget_s=time_budget_s, max_evaluations=max_evaluations, weights=w)
     t_start = time.monotonic()
     pl = Planner(scenario)
     sim = scenario.simulated

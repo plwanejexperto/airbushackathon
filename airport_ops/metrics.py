@@ -6,7 +6,7 @@ from typing import Optional
 
 from .canonical import quantise
 from .fallback import CostWeights, plan_cost
-from .fuel import fuel_account
+from .fuel import fuel_account, gate_fuel_margin_kg
 from .messages import FLIGHT_ID_FIELDS, Condition, ConditionOp, ConditionResult
 from .plan import RecoveryPlan
 from .schemas import Scenario
@@ -20,7 +20,6 @@ def plan_metrics(sc: Scenario, plan: RecoveryPlan) -> dict:
     """{'flights': {fid: {...}}, 'plan': {...}} using the same definitions as the ConditionField docs."""
     a = sc.simulated.assumptions
     sims = {f.flight_id: f for f in sc.simulated.flights}
-    conn = sc.simulated.connection
     per: dict[str, dict] = {}
     for p in plan.flights:
         sf = sims.get(p.flight_id)
@@ -32,11 +31,19 @@ def plan_metrics(sc: Scenario, plan: RecoveryPlan) -> dict:
             "gate_in_min": p.gate_in_min, "service_start_min": p.service_start_min, "service_end_min": p.service_end_min,
             "service_wait_min": p.service_start_min - (p.gate_in_min + a.deboard_min),
             "reserve_margin_kg": fa.reserve_margin_kg, "contingency_margin_kg": fa.contingency_margin_kg,
-            "connection_miss_min": (max(0.0, p.gate_in_min - conn.preferred_gate_in_by_min)
-                                    if conn and conn.flight_id == p.flight_id else 0.0),
+            "gate_fuel_margin_kg": gate_fuel_margin_kg(sc, sf, p.landing_min, p.gate_in_min),
+            "connection_miss_min": (max(0.0, p.gate_in_min - sc.simulated.connection_for(p.flight_id).preferred_gate_in_by_min)
+                                    if sc.simulated.connection_for(p.flight_id) else 0.0),
             "gate_id": p.gate_id, "runway_id": p.runway_id, "ground_crew_id": p.ground_crew_id,
             "priority": sf.priority,
         }
+        dep = sc.simulated.departure
+        if dep is not None:
+            per[p.flight_id]["service_wait_min"] = p.service_start_min - p.gate_in_min      # crew/equipment wait before the first task
+            if p.takeoff_min is not None and p.ready_min is not None:
+                per[p.flight_id].update({
+                    "ready_min": p.ready_min, "takeoff_min": p.takeoff_min, "turnaround_min": p.ready_min - p.gate_in_min,
+                    "departure_delay_min": p.takeoff_min - dep.scheduled_departure_min.get(p.flight_id, p.takeoff_min)})
     fcr = sc.workbook.fuel_crew
     overtime = 0.0
     for g in sc.simulated.ground_crews:
@@ -45,6 +52,7 @@ def plan_metrics(sc: Scenario, plan: RecoveryPlan) -> dict:
             overtime += max(0.0, max(p.service_end_min for p in mine) - (g.shift_start_min + fcr.ground_shift_h * 60))
     delays = [v["landing_delay_min"] for v in per.values()] or [0.0]
     flights = {f.flight_id: f for f in sc.simulated.flights}
+    dd = [v["departure_delay_min"] for v in per.values() if "departure_delay_min" in v]
     plan_level = {
         "max_landing_delay_min": max(delays), "total_landing_delay_min": sum(delays),
         "weighted_landing_delay": sum(v["priority"] * v["landing_delay_min"] for v in per.values()),
@@ -54,6 +62,9 @@ def plan_metrics(sc: Scenario, plan: RecoveryPlan) -> dict:
         "runway_changes": float(sum(p.runway_id != flights[p.flight_id].original_runway_id for p in plan.flights if p.flight_id in flights)),
         "total_cost": sum(plan_cost(sc, plan, CostWeights()).values()) if len(per) == len(plan.flights) else float("nan"),
     }
+    if dd:
+        plan_level.update({"total_departure_delay_min": sum(max(0.0, x) for x in dd), "max_departure_delay_min": max(max(0.0, x) for x in dd),
+                           "weighted_departure_delay": sum(v["priority"] * max(0.0, v["departure_delay_min"]) for v in per.values() if "departure_delay_min" in v)})
     return {"flights": per, "plan": plan_level}
 
 
@@ -87,5 +98,5 @@ def all_satisfied(results: list[ConditionResult]) -> bool:
 
 def metric_delta(before: dict, after: dict) -> dict[str, float]:
     keys = ["max_landing_delay_min", "total_landing_delay_min", "weighted_landing_delay", "total_service_wait_min",
-            "ground_overtime_min", "gate_changes", "runway_changes", "total_cost"]
-    return {k: round(after["plan"][k] - before["plan"][k], 4) for k in keys}
+            "ground_overtime_min", "gate_changes", "runway_changes", "total_cost", "weighted_departure_delay", "total_departure_delay_min"]
+    return {k: round(after["plan"][k] - before["plan"][k], 4) for k in keys if k in after["plan"] and k in before["plan"]}

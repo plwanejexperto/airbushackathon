@@ -10,7 +10,10 @@ from airport_ops.changes import build_change_log
 from airport_ops.demo import DEMO_LABEL, build_demo_scenario
 from airport_ops.export import export_json
 from airport_ops.fallback import Outcome, SearchStatus, run_fallback
-from airport_ops.messages import SPEAKING_ORDER, AgentRole
+from airport_ops.diversion import DiversionUnavailable, build_diversion_scenario
+from airport_ops.messages import SPEAKING_ORDER, AgentRole, legacy_participants
+from airport_ops.sessions import participants_for
+from airport_ops.turnaround import build_departure_demo, build_departure_scenario
 from airport_ops.negotiation import FREEZE_RULE, Coordinator, NegotiationConfig, new_session_id
 from airport_ops.negotiation_types import AgentContext, FinalStatus
 from airport_ops.plan import RecoveryPlan
@@ -66,15 +69,62 @@ with st.sidebar:
     idx = ids.index(default_row.name) if default_row.name in ids else 0
     sel = st.selectbox("Flight", ids, index=idx, format_func=labels.get)
     st.divider()
+    KINDS = ["Landing & delay (scenarios 1+2)", "Turnaround & departure (scenario 4)", "Diversion / emergency (scenario 3)"]
+    kind_label = st.radio("Scenario", KINDS, key="scenario_kind",
+                          help="1+2: runway-gate-fuel conflict for a delayed arrival. 4: turnaround and next departure on an agreed arrival plan. "
+                               "3: the destination cannot take the aircraft, divert to one alternate.")
+    kind = {KINDS[0]: "arrival", KINDS[1]: "departure", KINDS[2]: "diversion"}[kind_label]
+    div_case, div_emerg = "normal", False
+    if kind == "diversion":
+        div_case = st.selectbox("Fuel situation", ["normal", "minimum_fuel", "emergency", "unreachable"], key="div_case",
+                                help="How much fuel is on board relative to the alternate's needs. The STATUS (normal diversion / minimum fuel / "
+                                     "emergency) is then COMPUTED from distance, time and burn. 'unreachable' has no feasible alternate: ESCALATE.")
+        div_emerg = st.checkbox("Emergency declared (input)", key="div_emerg", help="e.g. medical/technical: forces EMERGENCY status regardless of fuel.")
+    full_agents = True
+    if kind == "arrival":
+        full_agents = st.radio("Agents", ["Per-aircraft Pilots + ATC + Ground (5 agents)", "Legacy: ATC, Pilot (selected flight), Ground (3 agents)"],
+                               key="agent_set").startswith("Per-aircraft")
     demo_on = st.checkbox("Conflict demonstration preset", key="demo_preset",
                           help="Opt-in: simulated closure, gate, crew and fuel conditions that make ATC, Pilot and Ground "
                                "want different plans. Off = ordinary seeded scenario.")
 
 h = data.to_historical(df.loc[sel])
+_cache = st.session_state.setdefault("_scenario_cache", {})
+
+
+def _arrival_plan_for(base):
+    """Arrival plan used as the INPUT of a turnaround/departure session: the latest arrival session's final plan on this scenario if there
+    is one, otherwise the deterministic fallback plan (a feasible baseline)."""
+    prior = [r for r in st.session_state.get("neg_runs", {}).values() if r.scenario_version == base.scenario_version and r.final_plan is not None]
+    if prior:
+        r = prior[-1]
+        return r.final_plan, f"arrival session {r.session_id} ({'agent consensus' if r.consensus else 'deterministic fallback'})"
+    key = ("fb", base.scenario_version)
+    if key not in _cache:
+        _cache[key] = run_fallback(base).plan
+    return _cache[key], "deterministic fallback arrival plan (feasible baseline)"
+
+
 try:
-    sc = build_scenario(h, rules)
-    if demo_on:
-        sc = build_demo_scenario(sc)
+    base_sc = build_scenario(h, rules)
+    arrival_src = ""
+    if kind == "arrival":
+        sc = build_demo_scenario(base_sc) if demo_on else base_sc
+    elif kind == "departure":
+        arr_plan, arrival_src = _arrival_plan_for(base_sc)
+        sc = build_departure_scenario(base_sc, arr_plan, df, plan_source=arrival_src)
+        if demo_on:
+            sc = build_departure_demo(sc)
+    else:
+        try:
+            sc = build_diversion_scenario(base_sc, rules, df, fuel_case=div_case, emergency_declared=div_emerg)
+        except DiversionUnavailable as e:
+            st.error(f"**ESCALATE – no feasible diversion.** {e}. There is nothing to negotiate: no reachable, suitable alternate exists on the fuel on board.")
+            st.dataframe(pd.DataFrame([{"alternate": c.airport, "name": c.name, "distance from position (nm)": c.distance_from_position_nm,
+                                        "flight time (min)": c.flight_time_min, "trip fuel (kg)": c.trip_fuel_kg, "suitable": c.suitable,
+                                        "why not": "; ".join(c.reasons)} for c in e.candidates]), hide_index=True)
+            st.caption("Position, distances and fuel are computed from the aircraft's simulated position; weather is simulated.")
+            st.stop()
 except ScenarioError as e:
     st.error(f"Cannot build a scenario for {h.label}: {e}")
     st.stop()
@@ -84,8 +134,10 @@ eventlog.log_event(sc.scenario_id, "scenario_created",
                     "airport": sc.workbook.airport.iata_code},
                    dedupe_key=f"scenario_created:{sc.scenario_version}")
 
-st.caption(f"Scenario `{sc.scenario_id}` · version `{sc.scenario_version}` · seed {sc.simulated.seed} "
-           f"(deterministic per flight) · scenario airport = destination **{sc.workbook.airport.iata_code}**")
+st.caption(f"Scenario `{sc.scenario_id}` · version `{sc.scenario_version}` · seed {sc.simulated.seed} (deterministic per flight) · "
+           f"**{kind_label}** · plan airport **{sc.workbook.airport.iata_code}**"
+           + (f" (diverted from {sc.simulated.diversion.destination.airport})" if sc.simulated.diversion else "")
+           + (f" · arrival input: {arrival_src}" if arrival_src else ""))
 
 # ---------- shared renderer for a plan + its validation ----------
 def show_report(plan: RecoveryPlan, report, only_fail: bool, key: str):
@@ -115,7 +167,7 @@ if demo_on:
     st.warning(f"**{DEMO_LABEL}** is ON: simulated runway closure, gate/crew/fuel conditions were added so the agents' "
                "preferences conflict. Ordinary sessions are not forced to disagree.")
 tab_h, tab_w, tab_s, tab_d, tab_n, tab_p = st.tabs(["📊 Historical (dataset)", "📘 Workbook limits (synthetic)", "🧪 Simulated conditions",
-                                                    "🎯 Requirement demo", "🤝 Negotiation (3 agents)", "🛠 Plans & validation"])
+                                                    "🎯 Requirement demo", "🤝 Negotiation (agents)", "🛠 Plans & validation"])
 unk = lambda v: v if v else "Unknown"
 
 # ---------- historical ----------
@@ -234,10 +286,13 @@ def run_session(live: bool) -> None:
     except llm.MissingCredentials as e:
         st.error(f"Cannot start live run: {e}")
         return
-    cfg = NegotiationConfig(call_timeout_s=live_cfg_.call_timeout_s, deadline_s=live_cfg_.deadline_s) if live else NegotiationConfig()
+    legacy = kind == "arrival" and not full_agents
+    kw = dict(call_timeout_s=live_cfg_.call_timeout_s, deadline_s=live_cfg_.deadline_s) if live else {}
+    cfg = NegotiationConfig(require_pilot_report=not legacy, **kw)
+    parts = None if legacy else participants_for(sc)
     sid = new_session_id()
-    with st.spinner(f"Negotiating ({'live Claude calls' if live else 'scripted'})…"):
-        neg_runs[sid] = Coordinator(sc, client, config=cfg, session_id=sid).run()
+    with st.spinner(f"Negotiating ({'live Claude calls' if live else 'scripted'}; {len(parts) if parts else 3} agents)…"):
+        neg_runs[sid] = Coordinator(sc, client, config=cfg, session_id=sid, participants=parts).run()
     neg_latest[sc.scenario_version] = sid
 
 with tab_n:
@@ -280,20 +335,20 @@ with tab_n:
                        help=f"model: {res.model_name}")
         cols[1].metric("Scenario version", res.scenario_version)
         cols[2].metric("Turns completed", f"{res.turns_completed} / 3")
-        cols[3].metric("Messages", f"{len(res.messages)} / 9")
+        cols[3].metric("Messages", f"{len(res.messages)} / {3 * len(res.participants or SPEAKING_ORDER)}")
         cols[4].metric("Session", res.session_id)
         if res.scenario_version != sc.scenario_version:
             st.error("This session belongs to a different scenario version and is invalid for the current scenario.")
         S = res.status
         if S == FinalStatus.AGENT_CONSENSUS:
-            st.success(f"**AGENT_CONSENSUS** – all three agents accepted frozen proposal `{res.frozen_proposal_id}` "
+            st.success(f"**AGENT_CONSENSUS** – all {len(res.participants or SPEAKING_ORDER)} agents accepted frozen proposal `{res.frozen_proposal_id}` "
                        f"(scenario `{res.scenario_version}`) and an independent re-validation passed "
                        f"({len(res.final_validation.results)} checks).")
         elif S == FinalStatus.FALLBACK_SELECTED:
             st.warning(f"**FALLBACK_SELECTED** – this is the deterministic fallback planner's plan, **NOT agent consensus**. "
                        f"Reason: `{res.fallback_reason.value}`")
         elif S == FinalStatus.NO_FEASIBLE_PLAN:
-            st.error(f"**NO_FEASIBLE_PLAN** – agents did not reach consensus and the fallback found no valid plan "
+            st.error(f"**NO_FEASIBLE_PLAN – ESCALATE** – agents did not reach consensus and the fallback found no valid plan "
                      f"(search **{res.fallback.search_status.value}**"
                      + (": candidate set exhausted" if res.fallback.search_status == SearchStatus.EXHAUSTED
                         else ": infeasibility NOT proven") + f"). Fallback trigger: `{res.fallback_reason.value}`")
@@ -306,19 +361,21 @@ with tab_n:
 
         # ---- three separate agent panels
         st.subheader("Agents")
-        pcols = st.columns(3)
-        blank = lambda role: AgentContext(role=role, turn=1, seq=1, session_id=res.session_id, scenario=sc, historical=h,
-                                          messages=[], proposals=[], standing={r: [] for r in SPEAKING_ORDER}, allowed_types=[])
-        for col, role in zip(pcols, SPEAKING_ORDER):
+        parts = res.participants or legacy_participants(h.label)
+        blank = lambda p: AgentContext(role=p.role, agent=p, participants=parts, turn=1, seq=1, session_id=res.session_id, scenario=sc,
+                                       historical=h, messages=[], proposals=[], standing={}, allowed_types=[])
+        slots = [(c, p) for row in (parts[i:i + 3] for i in range(0, len(parts), 3)) for c, p in zip(st.columns(3), row)]
+        for col, p in slots:
+            role = p.role
             with col:
                 icon = {"ATC": "🛫", "PILOT": "👨‍✈️", "GROUND": "🧰"}[role.value]
-                st.markdown(f"### {icon} {role.value}")
-                st.caption({"ATC": "runways · separation · taxiways · capacity",
-                            "PILOT": f"selected flight {h.label} only · fuel · ETA window · connection",
-                            "GROUND": "gates · crews · turnaround (stands/equipment not modelled)"}[role.value])
+                st.markdown(f"### {icon} {p.agent_id}")
+                st.caption({"ATC": "runways · separation · taxiways · capacity" + (f" · airport {p.airport}" if p.airport else ""),
+                            "PILOT": f"aircraft {p.flight_id or h.label} only · fuel · ETA window · connection",
+                            "GROUND": "gates · stands · crews · turnaround" + (f" · airport {p.airport}" if p.airport else "")}[role.value])
                 with st.expander("Domain view (what this agent sees)"):
-                    st.json(agents.MODULES[role].domain_view(blank(role)))
-                for m in [m for m in res.messages if m.sender == role]:
+                    st.json(agents.MODULES[role].domain_view(blank(p)))
+                for m in [m for m in res.messages if (m.agent_id or m.sender.value) == p.agent_id]:
                     with st.container(border=True):
                         st.markdown(f"**Turn {m.turn} · {m.type.value}** → `{m.proposal_id}`"
                                     + (f" (counters `{m.referenced_proposal_id}`)" if m.referenced_proposal_id else ""))
@@ -344,7 +401,7 @@ with tab_n:
         # ---- timeline
         st.subheader("Message timeline")
         st.dataframe(pd.DataFrame([{
-            "seq": m.seq, "turn": m.turn, "sender": m.sender.value, "type": m.type.value, "proposal": m.proposal_id,
+            "seq": m.seq, "turn": m.turn, "agent": m.agent_id or m.sender.value, "type": m.type.value, "proposal": m.proposal_id,
             "refs": m.referenced_proposal_id or "—", "valid plan": res.proposal(m.proposal_id).validation.passed,
             "conditions resolved": "—" if m.conditions_resolved is None else str(m.conditions_resolved),
             "reasons": ", ".join(r.value for r in m.reason_codes), "explanation": m.explanation} for m in res.messages]),
@@ -410,6 +467,31 @@ with tab_d:
         mode_name = {"live": "LIVE LLM calls", "scripted": "SCRIPTED policies (no language model)", "mock": "MOCK client"}.get(dres.mode, dres.mode)
         (st.info if dres.mode == "live" else st.warning)(f"Session `{dres.session_id}` · **{mode_name}** · scenario `{dres.scenario_version}`"
                                                          + (" · conflict preset" if demo_on else ""))
+        # 0 -- scenario-specific inputs
+        if sc.simulated.diversion is not None:
+            dv_ = sc.simulated.diversion
+            st.subheader("0 · Diversion case: position, options and computed status")
+            st.write(f"The aircraft cannot land at **{dv_.destination.airport}** within its fuel limit (earliest feasible landing "
+                     f"t+{dv_.destination.earliest_feasible_landing_min:.1f}, latest by fuel t+{dv_.destination.latest_landing_min_by_fuel:.1f}). "
+                     f"Computed status: **{dv_.computed_status.value}**" + (" (emergency declared as an input)" if dv_.emergency_declared_input else "") + ".")
+            st.caption(dv_.status_rule)
+            st.dataframe(pd.DataFrame([{"item": k, "value": str(v)} for k, v in dv_.position.items()]), hide_index=True)
+            st.dataframe(pd.DataFrame([{"option": "ORIGINAL DESTINATION " + dv_.destination.airport, "chosen": False, "suitable": dv_.destination.feasible,
+                                        "distance from position (nm)": dv_.position["distance_to_destination_nm"], "flight time (min)": dv_.position["minutes_to_destination"],
+                                        "why": f"closed until t+{dv_.destination.earliest_feasible_landing_min:.0f} (SIMULATED); fuel allows t+{dv_.destination.latest_landing_min_by_fuel:.0f}"}]
+                                      + [{"option": "ALTERNATE " + c.airport + (f" ({c.name})" if c.name else ""), "chosen": c.airport == dv_.alternate_airport, "suitable": c.suitable,
+                                          "distance from position (nm)": c.distance_from_position_nm, "flight time (min)": c.flight_time_min,
+                                          "why": ("; ".join(c.reasons) or "reachable on fuel, size ok, simulated weather ok") + f" · {c.distance_method[:60]}"} for c in dv_.candidates]),
+                         hide_index=True)
+            st.caption("Alternates are CANDIDATES because flights.csv connects them to the destination; suitability is decided by workbook size/capacity, fuel reach "
+                       "from the simulated position, and simulated weather. " + " ".join(dv_.assumptions[:2]))
+        if sc.simulated.departure is not None:
+            dp_ = sc.simulated.departure
+            st.subheader("0 · Turnaround + departure inputs (arrival part is fixed)")
+            st.caption(f"Arrival plan used as input: {dp_.arrival_plan_source or 'n/a'}")
+            st.dataframe(pd.DataFrame([{"aircraft": n.flight_id, "next flight": n.next_flight_label, "source": n.source, "planned ground time (min)": n.planned_ground_min,
+                                        "next flight block (min)": n.scheduled_block_min, "scheduled departure": f"t+{dp_.scheduled_departure_min[n.flight_id]:.1f}",
+                                        "note": n.note} for n in dp_.next_flights]), hide_index=True)
         # 1 -- disruption
         st.subheader("1 · Selected historical disruption (dataset row)")
         hh = sc.historical
@@ -460,7 +542,7 @@ with tab_d:
                                         "before": _fv(c.before), "after": _fv(c.after),
                                         "reasons": ", ".join(c.reason_codes)} for c in cl.step_changes]), hide_index=True)
         # 5 -- frozen + votes
-        st.subheader("5 · Frozen plan and the three final votes")
+        st.subheader("5 · Frozen plan and the final votes (one per agent)")
         if dres.frozen_proposal_id:
             fz = dres.proposal(dres.frozen_proposal_id)
             st.write(f"Frozen `{fz.proposal_id}` (version {fz.version_no}, digest `{fz.digest}`) - selection rule: {FREEZE_RULE}")
@@ -480,6 +562,10 @@ with tab_d:
                     ("Gate assignment", R["gate"], V["gate"], who("gate_id")),
                     ("Runway", R["runway"], V["runway"], who("runway_id")),
                     ("Taxi route (modelled)", R["taxi_route"], V["taxi_route"], who("taxi_route"))]
+            if "takeoff_min" in R and "takeoff_min" in V:
+                rows += [("Aircraft ready for departure", f"t+{R['ready_min']:.1f}", f"t+{V['ready_min']:.1f}", who("ready_min")),
+                         ("Departure runway", R["dep_runway"], V["dep_runway"], who("dep_runway_id")),
+                         ("Take-off time", f"t+{R['takeoff_min']:.1f}", f"t+{V['takeoff_min']:.1f}", who("takeoff_min"))]
             st.dataframe(pd.DataFrame([{"item": a, "reference": b, "revised": c, "proposed by": d, "result": "CHANGED" if b != c else "same"}
                                        for a, b, c, d in rows]), hide_index=True)
             changed = [r[0] for r in rows if r[1] != r[2]]
@@ -500,7 +586,7 @@ with tab_d:
         # 8 -- outcome
         st.subheader("8 · Outcome")
         if dres.status == FinalStatus.AGENT_CONSENSUS:
-            st.success(f"**AGENT_CONSENSUS** after {dres.turns_completed} turn(s) / {len(dres.messages)} messages: all three agents accepted "
+            st.success(f"**AGENT_CONSENSUS** after {dres.turns_completed} turn(s) / {len(dres.messages)} messages: all {len(dres.participants or SPEAKING_ORDER)} agents accepted "
                        f"`{dres.frozen_proposal_id}` and independent re-validation passed.")
         elif dres.status == FinalStatus.FALLBACK_SELECTED:
             st.warning(f"**FALLBACK_SELECTED** - NOT agent consensus. Reason `{dres.fallback_reason.value}`: {dres.fallback_detail}")
