@@ -129,3 +129,30 @@ One live session is not a reliability estimate: sessions vary run to run, and it
 `.gitignore` excludes `.env`, `*.db`, caches and `.DS_Store`; `.env.example` and the evidence JSON/console files are meant to be
 tracked. Verified on a throwaway `git init` copy: nothing sensitive would be tracked and no real key value appears in any tracked file
 or evidence database. Note: `data/flights.csv` (~38 MB) would also be tracked unless you ignore it or use Git LFS.
+
+## Scenarios 1-4 and the agent structure (stage 4)
+| Scenario | Plan domain | Agents (separate model call each) | Where |
+|---|---|---|---|
+| 1+2 Landing & weather/late-aircraft delay | arrival at the destination | `PILOT@<flight>` for **every** aircraft, `ATC@<airport>`, `GROUND@<airport>` (5 agents, 15 messages / 3 turns) | `sessions.py`, `planner.py` |
+| 4 Turnaround & departure | tasks, equipment, ready time, departure slot on a FIXED arrival plan | same 5 agents | `turnaround.py`, `departure_checks.py` |
+| 3 Diversion / emergency | the aircraft's arrival at ONE alternate airport | `PILOT@<flight>`, `ATC@<alt>`, `GROUND@<alt>`, `ATC@<dest>`, `GROUND@<dest>` (5 agents) | `diversion.py`, `diversion_checks.py` |
+
+* **Pilots speak first** and send a structured, code-verified report: arrival window / fuel margin / maximum holding time (arrival, diversion) or
+  next flight / latest take-off by crew duty (departure). Messages carry the agent id, flight id and airport.
+* **Landing refinements**: a SIMULATED remote stand (bussing adds deboarding time), a designated safe ground waiting area (capacity checked), and
+  ground-phase fuel (`FUEL-GROUND`: assumption `ground_burn_fraction_of_hold`; fuel at gate arrival must stay above the final reserve). An occupied
+  gate never delays landing; a long wait or a longer taxi route that exhausts the reserve is rejected, and the planner prefers the route that
+  reaches the gate sooner.
+* **Scenario 4**: the NEXT scheduled flight is an input - from `flights.csv` (same tail, same day, leaving this airport) when it exists, otherwise
+  labelled SIMULATED. Work content (deplane, bags, clean, refuel, board, checks), equipment units and push-back are SIMULATED. Workbook rules used:
+  minimum turnaround and, for the first time, same-runway DEPARTURE spacing (`min_time_s`). Hard checks: dependencies, equipment, ready time,
+  taxi-out, runway closure/occupancy, spacing, capacity, no early departure, crew duty for the next flight.
+* **Scenario 3**: aircraft position is simulated (remaining minutes x assumed cruise speed on the dataset's origin-destination route). Alternates are
+  candidates from `flights.csv` routes; distance comes from the aircraft's POSITION via triangle geometry on route distances (or a labelled
+  conservative assumption); suitability needs workbook size/capacity, fuel reach and (simulated) weather - **a route alone is never enough**.
+  Status is COMPUTED: NORMAL / MINIMUM_FUEL (contingency waived, reserve enforced) / EMERGENCY (earliest feasible slot, fuel > 0). A diversion is not
+  an emergency. No reachable suitable alternate => ESCALATE (no negotiation).
+* Remaining gaps: turbulence and real weather are not modelled (weather = simulated closures); the alternate's competing arrivals are deterministic
+  traffic (no Pilot agents) in diversion sessions; only one alternate airport per session; ground equipment exists only in turnaround sessions.
+* **Verification**: scripted + mocked + UI tests (see `tests/`). The five-agent live protocol, the readiness report, declared status and destination
+  agents have NOT yet been exercised against the live API - run one session per scenario to check prompt compliance.

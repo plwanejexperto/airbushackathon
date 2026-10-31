@@ -498,7 +498,7 @@ with tab_d:
         st.write(f"**{hh.label}** {hh.origin_code}→{hh.destination_code} on {hh.flight_date}: scheduled arrival {hh.scheduled_arrival}, "
                  f"actual {hh.actual_arrival}, arrival delay {hh.arrival_delay_min} min (weather {hh.weather_delay_min}, late-aircraft "
                  f"{hh.late_aircraft_delay_min}).")
-        st.caption("Context only, passed to all three agents. The negotiation below is in simulated minutes from scenario start and does "
+        st.caption("Context only, passed to every agent. The negotiation below is in simulated minutes from scenario start and does "
                    "not recover or reproduce this historical delay.")
         # 2 -- reference
         st.subheader("2 · Initial reference assignments (before any negotiation)")

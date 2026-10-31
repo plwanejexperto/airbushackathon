@@ -15,6 +15,13 @@ from airport_ops.llm import ModelAPIError, ModelRequest, ModelTimeout, MissingCr
 from airport_ops.negotiation import run_negotiation
 from airport_ops.tools import candidate_pool
 
+from airport_ops.llm import ScriptedClient as _SC
+
+
+class ScriptedClientCounter(_SC):
+    pass
+
+
 APP = str(Path(__file__).resolve().parent.parent / "app.py")
 SECRET = "sk-ant-test-SECRETSECRET1234567890"
 
@@ -144,6 +151,7 @@ def test_reruns_do_not_repeat_api_calls_or_duplicate_events_and_new_runs_get_new
     at = AppTest.from_file(APP, default_timeout=180).run()
     assert not at.exception
     assert client.calls == 0                                   # loading the page never calls a model
+    at.radio(key="agent_set").set_value("Legacy: ATC, Pilot (selected flight), Ground (3 agents)").run()    # 3 agents -> 9 messages
     at = _start(at)
     assert not at.exception and client.calls == 9
     assert any("AGENT_CONSENSUS" in s.value for s in at.success)
@@ -278,3 +286,31 @@ def test_app_reads_dotenv_and_enables_live_mode_without_showing_values(app_env, 
     finally:
         for v in llm.ROLE_KEY_VARS.values():
             os.environ.pop(v, None)
+
+
+@pytest.mark.parametrize("kind,calls", [("Landing & delay (scenarios 1+2)", 15), ("Turnaround & departure (scenario 4)", 15),
+                                          ("Diversion / emergency (scenario 3)", 15)])
+def test_every_scenario_kind_runs_once_per_click_in_the_ui_with_five_agents(monkeypatch, tmp_path, kind, calls):
+    monkeypatch.setattr(eventlog, "DB_PATH", tmp_path / "k.db")
+    client = ScriptedClientCounter()
+    monkeypatch.setattr(llm, "make_client", lambda mode, env=None: client)
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key="scenario_kind").set_value(kind).run()
+    next(b for b in at.button if b.label == "Run demonstration").click()
+    at.run()
+    assert not at.exception and client.calls == calls
+    for _ in range(2):
+        at.run()
+    assert client.calls == calls and any("AGENT_CONSENSUS" in s.value for s in at.success)
+    res = list(at.session_state["neg_runs"].values())[0]
+    assert len(res.participants) == 5 and len(res.messages) == 15 and res.consensus
+
+
+def test_unreachable_diversion_is_escalated_in_the_ui_without_any_model_call(monkeypatch, tmp_path):
+    monkeypatch.setattr(eventlog, "DB_PATH", tmp_path / "k.db")
+    client = ScriptedClientCounter()
+    monkeypatch.setattr(llm, "make_client", lambda mode, env=None: client)
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key="scenario_kind").set_value("Diversion / emergency (scenario 3)").run()
+    at.selectbox(key="div_case").select("unreachable").run()
+    assert not at.exception and any("ESCALATE" in e.value for e in at.error) and client.calls == 0

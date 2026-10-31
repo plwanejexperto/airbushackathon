@@ -273,11 +273,11 @@ def test_demo_view_runs_once_per_click_and_download_is_offered(demo, monkeypatch
     at.checkbox(key="demo_preset").check().run()
     next(b for b in at.button if b.label == "Run demonstration").click()
     at.run()
-    assert client.calls == 9 and not at.exception
+    assert client.calls == 15 and not at.exception          # default agent set: 3 per-aircraft Pilots + ATC + Ground, 3 turns
     heads = [h.value for h in at.subheader]
     for n in range(1, 9):
         assert any(h.startswith(f"{n} ·") for h in heads), n
     for _ in range(2):
         at.run()
-    assert client.calls == 9                                    # reruns do not repeat the session
+    assert client.calls == 15                                   # reruns do not repeat the session
     assert any("AGENT_CONSENSUS" in s.value for s in at.success)

@@ -29,8 +29,9 @@ def test_gitignore_protects_secrets_databases_and_caches():
 
 def test_no_database_files_outside_the_evidence_folder():
     dbs = [p for p in ROOT.rglob("*.db") if ".pytest_cache" not in p.parts]
-    assert all("demo_output" in p.parts for p in dbs), dbs                    # e.g. no stray events.db in the project root
-    assert not (ROOT / "events.db").exists()
+    # the app's own event log (project-root events.db, git-ignored) is legitimate while the app is in use; anything else must be evidence
+    assert all("demo_output" in p.parts or p == ROOT / "events.db" for p in dbs), dbs
+    assert "events.db" in {l.strip() for l in (ROOT / ".gitignore").read_text().splitlines()}
 
 
 def _files():
