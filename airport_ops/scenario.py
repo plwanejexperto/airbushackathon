@@ -29,6 +29,15 @@ def _class_of(cat: WakeCategory) -> AircraftClass:
     return AircraftClass.WIDEBODY if cat in (WakeCategory.SUPER, WakeCategory.HEAVY) else AircraftClass.NARROWBODY
 
 
+def fuel_state(eta: float, cls: AircraftClass, spare_min: float, a: SimAssumptions, fc) -> FuelState:
+    """Initial fuel state (see fuel.py): on board = trip + contingency + final reserve + spare holding. Unrounded."""
+    rate = fc.hold_burn_kg_h(cls)
+    burn = a.trip_burn_widebody_kg_h if cls == AircraftClass.WIDEBODY else a.trip_burn_narrowbody_kg_h
+    trip = eta / 60.0 * burn
+    onboard = trip * (1 + fc.contingency_fraction) + rate * (fc.final_reserve_min + spare_min) / 60.0
+    return FuelState(trip_fuel_remaining_kg=trip, fuel_on_board_kg=onboard, spare_fuel_min_at_eta=float(spare_min))
+
+
 def scenario_version(content: dict) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
@@ -96,19 +105,13 @@ def build_scenario(h: HistoricalFlight, rules: WorkbookRules, assumptions: Optio
         og = next((g for g in compat if g.id not in used_gates), compat[0] if compat else gates[0])
         used_gates.add(og.id)
         spare = rng.randint(*a.spare_fuel_min_range)
-        rate = fc.hold_burn_kg_h(cls)
-        burn = a.trip_burn_widebody_kg_h if cls == AircraftClass.WIDEBODY else a.trip_burn_narrowbody_kg_h
-        trip = eta / 60.0 * burn
-        # on board = trip + contingency (workbook %) + final reserve (workbook min) + spare holding
-        onboard = trip * (1 + fc.contingency_fraction) + rate * (fc.final_reserve_min + spare) / 60.0
         flights.append(SimFlight(
             flight_id=fid, source=src, wake_category=cat, aircraft_class=cls,
             passengers=rng.randint(100, 220) if cls == AircraftClass.NARROWBODY else rng.randint(250, 420),
             priority=rng.randint(1, 5), earliest_landing_min=float(eta), original_runway_id=rw_ids[0],
             original_gate_id=og.id, original_ground_crew_id=gc, flight_crew_id=f"FC-{fid}",
             service_task_min=float(rng.randint(min(20, hi_task), hi_task)),
-            fuel=FuelState(trip_fuel_remaining_kg=trip, fuel_on_board_kg=onboard,
-                           spare_fuel_min_at_eta=float(spare))))
+            fuel=fuel_state(eta, cls, spare, a, fc)))
         remaining_duty = rng.randint(180, 320)  # minutes of duty left at t=0
         flight_crews.append(FlightCrew(id=f"FC-{fid}", home_flight_id=fid,
                                        report_time_min=remaining_duty - fc.flight_crew_max_duty_h * 60))

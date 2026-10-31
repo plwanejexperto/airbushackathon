@@ -4,6 +4,7 @@ from __future__ import annotations
 import operator
 from typing import Optional
 
+from .canonical import quantise
 from .fallback import CostWeights, plan_cost
 from .fuel import fuel_account
 from .messages import FLIGHT_ID_FIELDS, Condition, ConditionOp, ConditionResult
@@ -66,10 +67,13 @@ def evaluate_condition(c: Condition, metrics: dict) -> ConditionResult:
         return ConditionResult(condition=c, satisfied=None, observed=None)
     if c.field in FLIGHT_ID_FIELDS:
         return ConditionResult(condition=c, satisfied=bool(_OPS[c.op](observed, c.value)), observed=observed)
-    lhs, rhs = float(observed), float(c.value)
+    # Both sides use the canonical per-field quantisation (canonical.py) - the SAME representation agents are shown - so a bound
+    # copied from the prompt (e.g. "<= 10.71" for an exact 10.7143) does not fail on display rounding. Fuel margins keep 6 decimals.
+    # Preference conditions only: hard constraints are validated separately, at full precision, in validate.py.
+    lhs, rhs = quantise(c.field.value, observed), quantise(c.field.value, c.value)
     ok = {ConditionOp.LE: lhs <= rhs + _EPS, ConditionOp.GE: lhs >= rhs - _EPS, ConditionOp.LT: lhs < rhs - _EPS,
-          ConditionOp.GT: lhs > rhs + _EPS, ConditionOp.EQ: abs(lhs - rhs) <= 1e-6, ConditionOp.NE: abs(lhs - rhs) > 1e-6}[c.op]
-    return ConditionResult(condition=c, satisfied=ok, observed=round(lhs, 4))
+          ConditionOp.GT: lhs > rhs + _EPS, ConditionOp.EQ: abs(lhs - rhs) <= _EPS, ConditionOp.NE: abs(lhs - rhs) > _EPS}[c.op]
+    return ConditionResult(condition=c, satisfied=ok, observed=lhs, observed_exact=float(observed))
 
 
 def evaluate_conditions(conds: list[Condition], metrics: dict) -> list[ConditionResult]:

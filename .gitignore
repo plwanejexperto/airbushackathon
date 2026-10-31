@@ -1,4 +1,9 @@
 .env
+!.env.example
 events.db
+*.db
+*.sqlite
+*.log
 __pycache__/
 .pytest_cache/
+.DS_Store

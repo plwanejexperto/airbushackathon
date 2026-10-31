@@ -102,7 +102,7 @@ class ConditionOp(str, Enum):
 
 
 class Condition(BaseModel):
-    """`<field> <op> <value>` evaluated against a proposal's plan. Hard constraints can NOT be expressed here:
+    """`<field> <op> <value>` evaluated against a proposal's plan at the canonical per-field precision (canonical.py) that agents are shown. Hard constraints can NOT be expressed here:
     validity is always checked separately and cannot be waived by any condition."""
     model_config = ConfigDict(extra="forbid")
     field: ConditionField
@@ -133,7 +133,8 @@ class Condition(BaseModel):
 class ConditionResult(BaseModel):
     condition: Condition
     satisfied: Optional[bool]  # None = unresolved (e.g. flight missing from the plan)
-    observed: Optional[Union[float, str]] = None
+    observed: Optional[Union[float, str]] = None        # canonical (quantised) value the comparison used
+    observed_exact: Optional[float] = None              # exact value, for audit
 
 
 class TradeoffMetric(str, Enum):

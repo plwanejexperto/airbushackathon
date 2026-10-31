@@ -74,3 +74,58 @@ All times are minutes from scenario start (`t+N`).
 Copy `.env.example` to `.env` (project root, git-ignored), fill in the three `ANTHROPIC_API_KEY_*` values (or one shared
 `ANTHROPIC_API_KEY`), and restart the app. Only `ANTHROPIC_*` / `NEGOTIATION_*` names are read; variables already exported in
 the shell win over the file; the app shows which names were read, never values.
+
+## Requirement audit: "agents negotiate a revised arrival time, gate assignment or flight plan adjustment within 3 turns"
+Run the demonstration: tick **Conflict demonstration preset** in the sidebar, open **Requirement demo**, click **Run demonstration**
+(mode follows the Negotiation tab: scripted or live). Download the session JSON from the bottom of that tab. Saved evidence is in
+`demo_output/` (see the evidence table below; no credentials).
+
+* **Initial reference plan** (`reference.py`): nominal ETA, original runway/gate/crew, shortest taxi route, no conflict resolution.
+  ILLUSTRATIVE reference, validated before turn 1 and shown to every agent. It normally FAILS hard constraints, so it is NOT a feasible
+  baseline and no efficiency/improvement is claimed against it; NOT the historical outcome (flights.csv times are context only).
+* **What can change** (`changes.py`): landing (touchdown) time, runway, taxi route (modelled graph), gate, gate arrival (on-block),
+  ground crew, service times. En-route flight-plan changes are not modelled and never claimed.
+* **Demonstration preset** (`demo.py`): runway closure + priority-5 Heavy (ATC wants it first), 8 min of spare fuel and a
+  connection preference (Pilot), resident aircraft on the original gate + late/short-shift crew + blocked taxiway (Ground).
+  Opt-in only; ordinary sessions are not forced to disagree.
+* Logged separately: `model_attempt` (incl. schema repairs), `tool_call` (advisory option menus, plan-spec materialisation),
+  `validation_performed` (reference / registration / freeze / final_revalidation).
+
+## Precision rules (preference conditions vs hard constraints)
+* `canonical.py` is the ONE representation of preference metrics, used both for what agents are shown and for evaluating their
+  conditions. Per-field decimals: minutes / weighted delay / cost = 2, gate and runway change counts = integers, fuel margins = 6
+  (effectively exact), identifiers exact. It is NOT a blanket rounding.
+* Hard constraints (`validate.py`, `fuel.py`, `planner.py`, `capacity.py`, `plan.py`) never import it and use exact values with their
+  own tolerances; a test asserts this. Boundary tests: a 0.4 g fuel-reserve deficit and a 10 ms wake-separation shortfall are rejected
+  even though a rounded display would read "0" / the same whole second. A condition can pass while a plan is invalid; consensus
+  additionally needs independent validation.
+
+## Verification status (what each claim rests on)
+| Claim | Evidence | Status |
+|---|---|---|
+| Scripted negotiation reaches `AGENT_CONSENSUS` on the conflict preset, with a counter-offer chain that changes the selected flight's **gate** (GATE-1 -> GATE-3) and **taxi route**; touchdown time and gate-arrival time of DL1205 are unchanged | `demo_output/scripted_demo.json`, `tests/test_requirement.py` | verified (scripted policies, not a language model) |
+| Live negotiation was exercised | run 1: `demo_output/live_demo.json`, `live_events.db`, `live_run_1_console.txt` - ended `FALLBACK_SELECTED` / `NO_UNANIMOUS_AGREEMENT` because a condition compared an exact 10.7143 with a rounded 10.71 (software defect, fixed) | exercised; failure log preserved |
+| Post-fix live consensus | run 2: `demo_output/live_run_2_postfix.json`, `live_run_2_events.db`, `live_run_2_console.txt` - `AGENT_CONSENSUS`, 3 turns, 9 messages, 9 model calls, 0 repairs, 62 s, independent validation passed (63 checks) | verified for this ONE session |
+
+Run 2 detail (model `claude-opus-5-5`, per-agent keys, scenario `af1df3e57f82`, seed 5945874): ATC proposed first; the Pilot countered
+(fuel/connection); Ground and ATC reasoned against the counter on cost and weighted delay; the Pilot conceded in turn 2 (measured
+by the coordinator: weighted delay -4.71, cost -48.9, 2 fewer gate changes, accepting a 21-minute soft connection miss for 30 passengers).
+The frozen plan was ATC's opening plan. For DL1205 the **revised arrival time** (touchdown t+22.0 -> t+25.64 and gate arrival
+t+32.5 -> t+55.0) was what changed; gate, runway and taxi route did not. These are delays against an illustrative, infeasible reference,
+not an improvement. The requirement is disjunctive (arrival time OR gate OR flight plan): scripted shows the gate/route path, run 2 the
+arrival-time path. En-route flight-plan adjustment is not modelled and is never claimed.
+One live session is not a reliability estimate: sessions vary run to run, and it was not repeated.
+
+## Exact demo steps
+1. `cp .env.example .env`, fill the three `ANTHROPIC_API_KEY_*` values (or one `ANTHROPIC_API_KEY`); never commit `.env`.
+2. `python3 -m streamlit run app.py`.
+3. Sidebar: tick **Conflict demonstration preset**.
+4. Scripted (free): tab **Requirement demo** -> **Run demonstration** (default mode is scripted and clearly labelled).
+5. Live: tab **Negotiation (3 agents)** -> mode **Live LLM** (banner must show `credentials: per_agent`) -> back to **Requirement demo**
+   -> **Run demonstration** (about 1-2 minutes, ~9-12 model calls). Read sections 1-8 and download the session JSON.
+6. Tests: `python3 -m pytest -q tests` (no keys needed, never reads `.env`, makes no network calls).
+
+## Repository hygiene
+`.gitignore` excludes `.env`, `*.db`, caches and `.DS_Store`; `.env.example` and the evidence JSON/console files are meant to be
+tracked. Verified on a throwaway `git init` copy: nothing sensitive would be tracked and no real key value appears in any tracked file
+or evidence database. Note: `data/flights.csv` (~38 MB) would also be tracked unless you ignore it or use Git LFS.

@@ -12,9 +12,14 @@ def system_prompt(role: AgentRole) -> str:
     return MODULES[role].system_prompt()
 
 
-def user_prompt(ctx: AgentContext) -> str:
+def tool_results(ctx: AgentContext) -> dict:
+    """Deterministic, advisory tool output for this role (valid options ranked by the ROLE's own objective)."""
+    return MODULES[ctx.role].tool_results(ctx)
+
+
+def user_prompt(ctx: AgentContext, tools: dict | None = None) -> str:
     m = MODULES[ctx.role]
-    return base.build_prompt(ctx, m.domain_view(ctx), m.tool_results(ctx))
+    return base.build_prompt(ctx, m.domain_view(ctx), tools if tools is not None else m.tool_results(ctx))
 
 
 def _originals_spec(ctx: AgentContext) -> PlanSpec:

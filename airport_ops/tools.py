@@ -11,6 +11,7 @@ import itertools
 from dataclasses import dataclass
 from typing import Optional
 
+from .canonical import canonical_metrics
 from .messages import AgentRole, PlanSpec
 from .metrics import plan_metrics
 from .plan import RecoveryPlan
@@ -120,7 +121,5 @@ def option_menu(role: AgentRole, sc: Scenario, k: int = 5) -> list[dict]:
     sel = sc.simulated.flights[0].flight_id
     pool = sorted(candidate_pool(sc), key=lambda c: (role_key(role, c.metrics, sel), c.proposal_id))
     return [{"proposal_id_if_proposed": c.proposal_id, "plan_spec": c.spec.model_dump(), "valid": True,
-             "consequences": {**{k2: round(v, 2) for k2, v in c.metrics["plan"].items()},
-                              "selected_flight": {k2: (round(v, 2) if isinstance(v, float) else v)
-                                                  for k2, v in c.metrics["flights"][sel].items()}}}
+             "consequences": {**canonical_metrics(c.metrics)["plan"], "selected_flight": canonical_metrics(c.metrics)["flights"][sel]}}
             for c in pool[:k]]

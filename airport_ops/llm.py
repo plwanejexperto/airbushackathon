@@ -19,6 +19,7 @@ A live run NEVER silently degrades to scripted mode: missing credentials raise M
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional, Protocol
@@ -78,14 +79,21 @@ class MissingCredentials(RuntimeError):
     """Live mode requested but credentials / SDK are unavailable. Never converted into scripted mode."""
 
 
+_SECRET_PATTERNS = (re.compile(r"sk-ant-[A-Za-z0-9_\-]{6,}"),                       # any Anthropic-style key, even one not in the env
+                    re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{8,}"),                  # Authorization: Bearer <token>
+                    re.compile(r"(?i)(x-api-key|authorization|api[-_]?key)(['\"]?\s*[:=]\s*['\"]?)[^\s,'\"}]+"))
+
+
 def sanitize(text: str, env: Optional[Mapping[str, str]] = None) -> str:
-    """Remove any credential value from text before it is logged or displayed."""
+    """Remove credential values and credential-bearing headers from text before it is logged, exported or displayed."""
     env = os.environ if env is None else env
     for name in CREDENTIAL_VARS:
         v = env.get(name)
         if v and len(v) >= 8:
             text = text.replace(v, "[REDACTED]")
-    return text
+    text = _SECRET_PATTERNS[0].sub("[REDACTED]", text)
+    text = _SECRET_PATTERNS[1].sub(r"\1 [REDACTED]", text)
+    return _SECRET_PATTERNS[2].sub(r"\1\2[REDACTED]", text)
 
 
 @dataclass

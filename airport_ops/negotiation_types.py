@@ -83,6 +83,26 @@ class DecisionRecord(BaseModel):
     observed_delta: dict = Field(default_factory=dict)     # recomputed by the coordinator: after - before
 
 
+class ToolCallRecord(BaseModel):
+    """A deterministic tool invocation (advisory option menu, plan-spec materialisation). Logged apart from model attempts."""
+    session_id: str
+    turn: int
+    seq: int
+    role: AgentRole
+    tool: str
+    summary: dict = Field(default_factory=dict)
+
+
+class ValidationEvent(BaseModel):
+    """One independent validator run (reference / registration / freeze / final_revalidation). Logged apart from messages."""
+    session_id: str
+    stage: str
+    proposal_id: str
+    passed: bool
+    n_checks: int
+    failed_constraints: list[str] = Field(default_factory=list)
+
+
 class Vote(BaseModel):
     role: AgentRole
     seq: Optional[int] = None
@@ -104,6 +124,10 @@ class NegotiationResult(BaseModel):
     proposals: list[ProposalRecord]
     attempts: list[ModelAttempt]
     decisions: list[DecisionRecord]
+    reference_plan: Optional[RecoveryPlan] = None
+    reference_validation: Optional[ValidationReport] = None
+    tool_calls: list[ToolCallRecord] = Field(default_factory=list)
+    validations: list[ValidationEvent] = Field(default_factory=list)
     frozen_proposal_id: Optional[str] = None
     freeze_ranking: list[dict] = Field(default_factory=list)
     votes: list[Vote] = Field(default_factory=list)
@@ -137,5 +161,6 @@ class AgentContext:
     proposals: list[ProposalRecord]
     standing: dict[AgentRole, list[Condition]]     # each agent's most recently stated conditions
     allowed_types: list[MessageType]
+    reference: Optional[dict] = None               # initial reference plan view (plan summary + validation evidence)
     frozen: Optional[ProposalRecord] = None        # turn 3 only
     repair_error: Optional[str] = None

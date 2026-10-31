@@ -32,9 +32,9 @@ def assignment_rows(plan: RecoveryPlan, scenario: Scenario) -> list[dict]:
     flights = {f.flight_id: f for f in scenario.simulated.flights}
     t = lambda m: f"t+{m:.1f}"
     return [{
-        "flight": p.flight_id, "runway": p.runway_id, "landing": t(p.landing_min),
+        "flight": p.flight_id, "runway": p.runway_id, "landing (touchdown)": t(p.landing_min),
         "taxi route": " > ".join(p.taxi_route), "taxi": f"{t(p.taxi_start_min)} - {t(p.taxi_end_min)}",
         "gate": p.gate_id + (" (changed)" if p.gate_id != flights[p.flight_id].original_gate_id else ""),
-        "gate-in": t(p.gate_in_min), "service": f"{t(p.service_start_min)} - {t(p.service_end_min)}",
+        "gate arrival (on-block)": t(p.gate_in_min), "service": f"{t(p.service_start_min)} - {t(p.service_end_min)}",
         "ground crew": p.ground_crew_id, "flight crew": p.flight_crew_id,
     } for p in plan.flights]

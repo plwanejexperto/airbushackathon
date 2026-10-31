@@ -6,6 +6,9 @@ import streamlit as st
 from pydantic import ValidationError
 
 from airport_ops import agents, data, eventlog, llm
+from airport_ops.changes import build_change_log
+from airport_ops.demo import DEMO_LABEL, build_demo_scenario
+from airport_ops.export import export_json
 from airport_ops.fallback import Outcome, SearchStatus, run_fallback
 from airport_ops.messages import SPEAKING_ORDER, AgentRole
 from airport_ops.negotiation import FREEZE_RULE, Coordinator, NegotiationConfig, new_session_id
@@ -62,10 +65,16 @@ with st.sidebar:
     ids = list(labels)
     idx = ids.index(default_row.name) if default_row.name in ids else 0
     sel = st.selectbox("Flight", ids, index=idx, format_func=labels.get)
+    st.divider()
+    demo_on = st.checkbox("Conflict demonstration preset", key="demo_preset",
+                          help="Opt-in: simulated closure, gate, crew and fuel conditions that make ATC, Pilot and Ground "
+                               "want different plans. Off = ordinary seeded scenario.")
 
 h = data.to_historical(df.loc[sel])
 try:
     sc = build_scenario(h, rules)
+    if demo_on:
+        sc = build_demo_scenario(sc)
 except ScenarioError as e:
     st.error(f"Cannot build a scenario for {h.label}: {e}")
     st.stop()
@@ -102,8 +111,11 @@ def show_report(plan: RecoveryPlan, report, only_fail: bool, key: str):
     st.dataframe(pd.DataFrame(rows), hide_index=True)
 
 
-tab_h, tab_w, tab_s, tab_n, tab_p = st.tabs(["📊 Historical (dataset)", "📘 Workbook limits (synthetic)",
-                                         "🧪 Simulated conditions", "🤝 Negotiation (3 agents)", "🛠 Plans & validation"])
+if demo_on:
+    st.warning(f"**{DEMO_LABEL}** is ON: simulated runway closure, gate/crew/fuel conditions were added so the agents' "
+               "preferences conflict. Ordinary sessions are not forced to disagree.")
+tab_h, tab_w, tab_s, tab_d, tab_n, tab_p = st.tabs(["📊 Historical (dataset)", "📘 Workbook limits (synthetic)", "🧪 Simulated conditions",
+                                                    "🎯 Requirement demo", "🤝 Negotiation (3 agents)", "🛠 Plans & validation"])
 unk = lambda v: v if v else "Unknown"
 
 # ---------- historical ----------
@@ -208,6 +220,26 @@ run = runs.setdefault(sc.scenario_version, {})
 neg_runs = st.session_state.setdefault("neg_runs", {})      # session_id -> NegotiationResult (survives reruns)
 neg_latest = st.session_state.setdefault("neg_latest", {})  # scenario_version -> session_id
 
+
+def _fv(v) -> str:
+    """Display value as text (mixed str/float columns break Arrow conversion)."""
+    return v if isinstance(v, str) else f"{v:.1f}"
+
+
+def run_session(live: bool) -> None:
+    """Runs ONE new negotiation (new session id). Called only from a button click, never on a plain rerun."""
+    live_cfg_ = llm.LiveConfig.from_env()
+    try:
+        client = llm.make_client("live" if live else "scripted")
+    except llm.MissingCredentials as e:
+        st.error(f"Cannot start live run: {e}")
+        return
+    cfg = NegotiationConfig(call_timeout_s=live_cfg_.call_timeout_s, deadline_s=live_cfg_.deadline_s) if live else NegotiationConfig()
+    sid = new_session_id()
+    with st.spinner(f"Negotiating ({'live Claude calls' if live else 'scripted'})…"):
+        neg_runs[sid] = Coordinator(sc, client, config=cfg, session_id=sid).run()
+    neg_latest[sc.scenario_version] = sid
+
 with tab_n:
     live_cfg = llm.LiveConfig.from_env()
     st.caption(".env file: " + (f"{len(ENV_LOADED)} variable(s) read from it ({', '.join(ENV_LOADED)}); values are never shown"
@@ -233,16 +265,7 @@ with tab_n:
                "deterministic traffic (no Pilot agents yet).")
     if st.button("Start new negotiation", type="primary", disabled=live and not live_cfg.credentials_present,
                  help="Creates a new session id and runs ATC → Pilot → Ground for up to 3 turns (max 9 messages)."):
-        try:
-            client = llm.make_client("live" if live else "scripted")
-        except llm.MissingCredentials as e:
-            st.error(f"Cannot start live run: {e}")
-        else:
-            cfg = NegotiationConfig(call_timeout_s=live_cfg.call_timeout_s, deadline_s=live_cfg.deadline_s) if live else NegotiationConfig()
-            sid = new_session_id()
-            with st.spinner(f"Negotiating ({'live Claude calls' if live else 'scripted'})…"):
-                neg_runs[sid] = Coordinator(sc, client, config=cfg, session_id=sid).run()
-            neg_latest[sc.scenario_version] = sid
+        run_session(live)
 
     stale = [r for r in neg_runs.values() if r.scenario_version != sc.scenario_version]
     res = neg_runs.get(neg_latest.get(sc.scenario_version, ""))
@@ -368,6 +391,125 @@ with tab_n:
         if res.mode == "scripted":
             st.caption("Scripted demo: these rows are policy invocations, not language-model calls.")
         st.dataframe(pd.DataFrame([a_.model_dump(mode="json", exclude={"session_id"}) for a_ in res.attempts]), hide_index=True)
+
+# ---------- requirement demonstration view ----------
+with tab_d:
+    st.markdown("#### Requirement: agents negotiate a revised arrival time, gate assignment or flight-plan adjustment within 3 turns")
+    _live_sel = st.session_state.get("neg_mode", "").startswith("Live")
+    _cfg = llm.LiveConfig.from_env()
+    st.caption(("Mode selected in the Negotiation tab: **LIVE LLM**" if _live_sel else "Mode selected in the Negotiation tab: **SCRIPTED DEMO (no LLM)**")
+               + (" · conflict preset ON" if demo_on else " · conflict preset OFF (tick it in the sidebar for a visible negotiation)"))
+    if st.button("Run demonstration", key="demo_run", type="primary", disabled=_live_sel and not _cfg.credentials_present,
+                 help="Starts ONE new session with the mode chosen in the Negotiation tab. Reruns never repeat it."):
+        run_session(_live_sel)
+    dres = neg_runs.get(neg_latest.get(sc.scenario_version, ""))
+    if dres is None:
+        st.info("No session yet for this scenario version. Click **Run demonstration**.")
+    else:
+        cl = build_change_log(sc, dres)
+        mode_name = {"live": "LIVE LLM calls", "scripted": "SCRIPTED policies (no language model)", "mock": "MOCK client"}.get(dres.mode, dres.mode)
+        (st.info if dres.mode == "live" else st.warning)(f"Session `{dres.session_id}` · **{mode_name}** · scenario `{dres.scenario_version}`"
+                                                         + (" · conflict preset" if demo_on else ""))
+        # 1 -- disruption
+        st.subheader("1 · Selected historical disruption (dataset row)")
+        hh = sc.historical
+        st.write(f"**{hh.label}** {hh.origin_code}→{hh.destination_code} on {hh.flight_date}: scheduled arrival {hh.scheduled_arrival}, "
+                 f"actual {hh.actual_arrival}, arrival delay {hh.arrival_delay_min} min (weather {hh.weather_delay_min}, late-aircraft "
+                 f"{hh.late_aircraft_delay_min}).")
+        st.caption("Context only, passed to all three agents. The negotiation below is in simulated minutes from scenario start and does "
+                   "not recover or reproduce this historical delay.")
+        # 2 -- reference
+        st.subheader("2 · Initial reference assignments (before any negotiation)")
+        if dres.reference_plan is not None:
+            rv = dres.reference_validation
+            st.dataframe(pd.DataFrame(assignment_rows(dres.reference_plan, sc)), hide_index=True)
+            (st.success if rv.passed else st.error)(
+                f"Reference plan `{dres.reference_plan.proposal_id}`: " + ("valid" if rv.passed else
+                f"INVALID - {len(rv.failures)} hard-constraint failures: " + ", ".join(sorted({r.constraint_id for r in rv.failures}))))
+            st.caption("ILLUSTRATIVE reference (nominal ETA, original runway/gate/crew, no conflict resolution). Usually infeasible, so it is not a "
+                       "feasible baseline, not the historical outcome, and no improvement is claimed against it.")
+        # 3 -- turns
+        st.subheader("3 · Turn-by-turn structured messages")
+        for t_ in (1, 2, 3):
+            ms = [m for m in dres.messages if m.turn == t_]
+            st.markdown(f"**Turn {t_}**" + (" - vote on the frozen candidate" if t_ == 3 else "") + f" ({len(ms)}/3 messages)")
+            if t_ == 3 and dres.frozen_proposal_id:
+                st.caption(f"Frozen before turn 3: `{dres.frozen_proposal_id}` (no plan changes allowed in turn 3)")
+            for m in ms:
+                pr = dres.proposal(m.proposal_id)
+                st.markdown(f"- **{m.sender.value}** · {m.type.value} · `{m.proposal_id}`"
+                            + (f" (counters `{m.referenced_proposal_id}`)" if m.referenced_proposal_id else "")
+                            + f" · plan {'valid' if pr.validation.passed else 'INVALID'}"
+                            + (f" · conditions resolved: {m.conditions_resolved}" if m.conditions_resolved is not None else "")
+                            + f"  \n  reasons: {', '.join(r.value for r in m.reason_codes) or '-'}  \n  {m.explanation}")
+        # 4 -- changes
+        st.subheader("4 · Proposal changes and reasons")
+        st.caption(f"Final plan kind: **{cl.final_kind}**. Lineage (counter-offer chain): "
+                   + (" → ".join(f"{l['proposer']} {l['proposal_id']}" for l in cl.lineage) or "none"))
+        if cl.final_changes:
+            st.dataframe(pd.DataFrame([{
+                "flight": c.flight_id, "what changed": c.label, "reference": _fv(c.before), "final": _fv(c.after),
+                "proposed by": f"{c.proposed_by} (msg {c.message_seq})" if c.message_seq else (c.proposed_by or "-"),
+                "reason codes": ", ".join(c.reason_codes) or "-", "why": c.driver,
+                "constraint evidence": "; ".join(f"{e['constraint_id']}: {e['reference_result'][:70]}" for e in c.evidence) or "-"}
+                for c in cl.final_changes]), hide_index=True)
+        else:
+            st.info("No difference between the reference plan and the final plan.")
+        with st.expander("Every revision along the counter-offer chain"):
+            st.dataframe(pd.DataFrame([{"step": c.step, "by": c.proposed_by, "msg": c.message_seq, "flight": c.flight_id, "what": c.label,
+                                        "before": _fv(c.before), "after": _fv(c.after),
+                                        "reasons": ", ".join(c.reason_codes)} for c in cl.step_changes]), hide_index=True)
+        # 5 -- frozen + votes
+        st.subheader("5 · Frozen plan and the three final votes")
+        if dres.frozen_proposal_id:
+            fz = dres.proposal(dres.frozen_proposal_id)
+            st.write(f"Frozen `{fz.proposal_id}` (version {fz.version_no}, digest `{fz.digest}`) - selection rule: {FREEZE_RULE}")
+            st.dataframe(pd.DataFrame([{"agent": v.role.value, "vote": v.type.value if v.type else "-", "proposal": v.proposal_id or "-",
+                                        "counts toward consensus": v.counted_as_accept, "note": v.note} for v in dres.votes]),
+                         hide_index=True)
+        else:
+            st.info("No candidate was frozen, so there was no final vote.")
+        # 6 -- before/after
+        st.subheader(f"6 · Reference → revised for the selected flight ({sc.simulated.flights[0].flight_id})")
+        sf = cl.selected_flight
+        if sf.get("reference") and sf.get("revised"):
+            R, V = sf["reference"], sf["revised"]
+            who = lambda *fields: ", ".join(sorted({str(sf["proposed_by"][f]) for f in fields if f in sf["proposed_by"]})) or "unchanged"
+            rows = [("Landing / touchdown time", f"t+{R['landing_min']:.1f}", f"t+{V['landing_min']:.1f}", who("landing_min")),
+                    ("Gate arrival / on-block time", f"t+{R['gate_arrival_min']:.1f}", f"t+{V['gate_arrival_min']:.1f}", who("gate_in_min")),
+                    ("Gate assignment", R["gate"], V["gate"], who("gate_id")),
+                    ("Runway", R["runway"], V["runway"], who("runway_id")),
+                    ("Taxi route (modelled)", R["taxi_route"], V["taxi_route"], who("taxi_route"))]
+            st.dataframe(pd.DataFrame([{"item": a, "reference": b, "revised": c, "proposed by": d, "result": "CHANGED" if b != c else "same"}
+                                       for a, b, c, d in rows]), hide_index=True)
+            changed = [r[0] for r in rows if r[1] != r[2]]
+            (st.success if changed and dres.consensus else st.warning)(
+                ("Changed for the selected flight: " + ", ".join(changed)) if changed else
+                "No arrival, gate or route change for the selected flight in this outcome.")
+            st.caption("Nominal ETA is t+%.1f. Touchdown time is reported separately from gate arrival; only rows marked CHANGED changed. "
+                       "En-route flight-plan changes are not modelled." % sf["nominal_eta_min"])
+        else:
+            st.info("No final plan, so no before/after.")
+        # 7 -- validation
+        st.subheader("7 · Hard-constraint validation (independent validator)")
+        st.dataframe(pd.DataFrame([{"stage": v.stage, "proposal": v.proposal_id, "passed": v.passed, "checks": v.n_checks,
+                                    "failed constraints": ", ".join(v.failed_constraints) or "-"} for v in dres.validations]),
+                     hide_index=True)
+        st.caption(f"{len(dres.tool_calls)} deterministic tool calls and {len(dres.attempts)} model attempts are logged separately "
+                   "(see the Negotiation tab and the download).")
+        # 8 -- outcome
+        st.subheader("8 · Outcome")
+        if dres.status == FinalStatus.AGENT_CONSENSUS:
+            st.success(f"**AGENT_CONSENSUS** after {dres.turns_completed} turn(s) / {len(dres.messages)} messages: all three agents accepted "
+                       f"`{dres.frozen_proposal_id}` and independent re-validation passed.")
+        elif dres.status == FinalStatus.FALLBACK_SELECTED:
+            st.warning(f"**FALLBACK_SELECTED** - NOT agent consensus. Reason `{dres.fallback_reason.value}`: {dres.fallback_detail}")
+        elif dres.status == FinalStatus.NO_FEASIBLE_PLAN:
+            st.error(f"**NO_FEASIBLE_PLAN** (search {dres.fallback.search_status.value}). Reason `{dres.fallback_reason.value}`: {dres.fallback_detail}")
+        else:
+            st.error(f"**SESSION_INVALIDATED** - {dres.invalidation_detail}")
+        st.download_button("Download session JSON (no credentials)", data=export_json(sc, dres), file_name=f"negotiation_{dres.session_id}.json",
+                           mime="application/json", key=f"dl-{dres.session_id}")
 
 with tab_p:
     only_fail = st.checkbox("Show only failed checks", value=False)

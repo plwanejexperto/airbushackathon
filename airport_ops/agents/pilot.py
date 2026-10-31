@@ -1,6 +1,7 @@
 """Pilot agent: the SELECTED historical flight only (competing flights are deterministic traffic, no pilot agent yet)."""
 from __future__ import annotations
 
+from ..canonical import DECIMALS, quantise
 from ..fuel import fuel_account, latest_landing_min
 from ..messages import AgentRole, Condition, ConditionField, ConditionOp, ReasonCode, TradeoffMetric
 from ..negotiation_types import AgentContext
@@ -34,7 +35,8 @@ def domain_view(ctx: AgentContext) -> dict:
                            "earliest_landing_min": sf.earliest_landing_min,
                            "latest_landing_min_protecting_contingency": round(latest_landing_min(sc, sf), 3),
                            "latest_landing_min_protecting_final_reserve_only (never use)": round(latest_landing_min(sc, sf, protect_contingency=False), 3)},
-            "fuel_at_nominal_eta": {k: round(v, 2) if isinstance(v, float) else v for k, v in fa.as_dict().items()},
+            "fuel_at_nominal_eta": {k: (quantise(k, v) if k in DECIMALS else round(v, 2) if isinstance(v, float) else v)
+                                    for k, v in fa.as_dict().items()},
             "fuel_rules": {"final_reserve_min": fcw.final_reserve_min, "contingency_fraction_of_trip": fcw.contingency_fraction,
                            "holding_burn_kg_per_h": fa.hold_burn_kg_h},
             "flight_crew": {"id": crew.id, "duty_limit_min": crew.report_time_min + fcw.flight_crew_max_duty_h * 60,
@@ -62,11 +64,15 @@ def standing_conditions(ctx: AgentContext) -> list[Condition]:
     best = best_for(ROLE, ctx.scenario)
     if best is None:
         return []
-    sel = ctx.scenario.simulated.flights[0].flight_id
+    sc = ctx.scenario
+    sf = sc.simulated.flights[0]
+    sel = sf.flight_id
     m = best.metrics["flights"][sel]
+    margin0 = fuel_account(sc, sf, sf.earliest_landing_min).contingency_margin_kg   # spare holding fuel at nominal ETA, kg
     return [Condition(field=ConditionField.LANDING_DELAY_MIN, op=ConditionOp.LE, flight_id=sel, value=round(m["landing_delay_min"] + 3, 2)),
             Condition(field=ConditionField.CONNECTION_MISS_MIN, op=ConditionOp.LE, flight_id=sel, value=round(m["connection_miss_min"] + 5, 2)),
-            Condition(field=ConditionField.CONTINGENCY_MARGIN_KG, op=ConditionOp.GE, flight_id=sel, value=0.0)]
+            # fuel preference (soft, on top of the hard reserve/contingency checks): keep >= 75 % of the spare holding fuel
+            Condition(field=ConditionField.CONTINGENCY_MARGIN_KG, op=ConditionOp.GE, flight_id=sel, value=round(0.75 * margin0, 1))]
 
 
 def scripted_policy(ctx: AgentContext, fallback_spec) -> str:

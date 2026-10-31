@@ -29,8 +29,9 @@ from .llm import AgentClient, ModelAPIError, ModelRequest, ModelTimeout, sanitiz
 from .messages import (MAX_MESSAGES, AgentOutput, AgentRole, Condition, MessageType, NegotiationMessage, SPEAKING_ORDER)
 from .metrics import all_satisfied, evaluate_conditions, metric_delta, plan_metrics
 from .negotiation_types import (AgentContext, DecisionRecord, FallbackReason, FinalStatus, ModelAttempt,
-                                NegotiationResult, ProposalRecord, Vote)
+                                NegotiationResult, ProposalRecord, ToolCallRecord, ValidationEvent, Vote)
 from .plan import RecoveryPlan, make_plan
+from .reference import REFERENCE_DESCRIPTION, reference_plan
 from .schemas import Scenario
 from .tools import SOURCE, materialise
 from .validate import validate_plan
@@ -86,6 +87,12 @@ class Coordinator:
         self.frozen: Optional[ProposalRecord] = None
         self.freeze_ranking: list[dict] = []
         self.votes: list[Vote] = []
+        self.tool_calls: list[ToolCallRecord] = []
+        self.validations: list[ValidationEvent] = []
+        self.reference = None
+        self.reference_validation = None
+        self._ref_view: Optional[dict] = None
+        self._n_tool = self._n_val = 0
         self._t0 = 0.0
         self._planner = None
 
@@ -95,6 +102,20 @@ class Coordinator:
             return
         eventlog.log_event(self.sc.scenario_id, etype, {"session_id": self.sid, "scenario_version": self.version, **payload},
                            actor=actor, path=self.log_path or eventlog.DB_PATH, dedupe_key=f"{self.sid}:{key}")
+
+    def _tool(self, role: AgentRole, turn: int, seq: int, tool: str, summary: dict) -> None:
+        self._n_tool += 1
+        rec = ToolCallRecord(session_id=self.sid, turn=turn, seq=seq, role=role, tool=tool, summary=summary)
+        self.tool_calls.append(rec)
+        self._event("tool_call", {"turn": turn, "seq": seq, "role": role.value, "tool": tool, **summary}, f"tool:{self._n_tool}",
+                    actor=role.value)
+
+    def _validated(self, stage: str, proposal_id: str, report) -> None:
+        self._n_val += 1
+        ev = ValidationEvent(session_id=self.sid, stage=stage, proposal_id=proposal_id, passed=report.passed,
+                             n_checks=len(report.results), failed_constraints=sorted({r.constraint_id for r in report.failures}))
+        self.validations.append(ev)
+        self._event("validation_performed", ev.model_dump(mode="json", exclude={"session_id"}), f"validation:{self._n_val}")
 
     def _elapsed(self) -> float:
         return self.clock() - self._t0
@@ -109,6 +130,7 @@ class Coordinator:
         self._event("negotiation_started", {"mode": self.client.mode, "model": self.client.model_name,
                                            "call_timeout_s": self.cfg.call_timeout_s, "deadline_s": self.cfg.deadline_s,
                                            "freeze_rule": FREEZE_RULE}, "started")
+        self._prepare_reference()
         try:
             for turn in (1, 2):
                 for role in SPEAKING_ORDER:
@@ -124,18 +146,33 @@ class Coordinator:
         except _Abort as e:
             return self._fallback(e.reason, e.detail)
 
+    def _prepare_reference(self) -> None:
+        """Define and validate the initial reference plan BEFORE any agent speaks; every agent sees it."""
+        self.reference = reference_plan(self.sc)
+        self.reference_validation = validate_plan(self.sc, self.reference)
+        self._validated("reference", self.reference.proposal_id, self.reference_validation)
+        self._ref_view = {
+            "description": REFERENCE_DESCRIPTION, "proposal_id": self.reference.proposal_id,
+            "valid": self.reference_validation.passed,
+            "failed_constraints": [{"constraint": r.constraint_id, "flight": r.flight_id, "resource": r.resource_id,
+                                    "why": r.explanation[:160]} for r in self.reference_validation.failures][:12],
+            "plan": agents.base._plan_summary(self.reference.model_dump_json())}
+        self._event("reference_plan", {"proposal_id": self.reference.proposal_id, "valid": self.reference_validation.passed,
+                                       "failed_constraints": [[r.constraint_id, r.flight_id, r.resource_id] for r in self.reference_validation.failures],
+                                       "plan": self.reference.model_dump(mode="json")}, "reference")
+
     # ------------------------------------------------------------------ one agent message
     def _context(self, role, turn, seq, allowed, frozen, repair) -> AgentContext:
         return AgentContext(role=role, turn=turn, seq=seq, session_id=self.sid, scenario=self.sc, historical=self.sc.historical,
                             messages=list(self.messages), proposals=list(self.proposals), standing=dict(self.standing),
-                            allowed_types=allowed, frozen=frozen, repair_error=repair)
+                            allowed_types=allowed, reference=self._ref_view, frozen=frozen, repair_error=repair)
 
     def _record_attempt(self, role, turn, attempt, outcome, t_start, resp=None, error=None) -> None:
         a = ModelAttempt(session_id=self.sid, turn=turn, role=role, attempt=attempt,
                          kind="initial" if attempt == 1 else "schema_repair", outcome=outcome,
                          latency_ms=int((self.clock() - t_start) * 1000), mode=self.client.mode, model=self.client.model_name,
                          credential_mode=getattr(self.client, "credential_mode", None),
-                         error=sanitize(error)[:300] if error else None,
+                         error=sanitize(error)[:600] if error else None,
                          input_tokens=getattr(resp, "input_tokens", None), output_tokens=getattr(resp, "output_tokens", None))
         self.attempts.append(a)
         self._event("model_attempt", a.model_dump(mode="json", exclude={"session_id"}), f"attempt:{turn}:{role.value}:{attempt}",
@@ -155,7 +192,11 @@ class Coordinator:
                              f"total negotiation deadline of {self.cfg.deadline_s:g}s exceeded before {role.value}'s turn-{turn} message")
             ctx = self._context(role, turn, seq, allowed, frozen, repair)
             timeout = min(self.cfg.call_timeout_s, remaining)
-            req = ModelRequest(role=role.value, system=agents.system_prompt(role), prompt=agents.user_prompt(ctx), context=ctx,
+            tools = agents.tool_results(ctx)
+            self._tool(role, turn, seq, "option_menu", {
+                "attempt": attempt, "advisory": True, "ranked_by": f"{role.value} objective",
+                "options_returned": [o["proposal_id_if_proposed"] for o in tools.get("options", [])]})
+            req = ModelRequest(role=role.value, system=agents.system_prompt(role), prompt=agents.user_prompt(ctx, tools), context=ctx,
                                turn=turn, timeout_s=timeout, attempt=attempt, repair_error=repair)
             t = self.clock()
             try:
@@ -178,7 +219,7 @@ class Coordinator:
             except MessageError as e:
                 self._record_attempt(role, turn, attempt, "schema_error", t, resp=resp, error=str(e))
                 if attempt == 1:
-                    repair = str(e)[:500]
+                    repair = str(e)[:700]
                     continue
                 raise _Abort(FallbackReason.RESPONSE_ERROR,
                              f"{role.value}'s turn-{turn} reply was still invalid after the single repair retry: {str(e)[:200]}")
@@ -194,7 +235,12 @@ class Coordinator:
             out = AgentOutput.model_validate_json(extract_json(text))
         except ValueError as e:  # json errors and pydantic ValidationError both derive from ValueError
             if isinstance(e, ValidationError):
-                raise MessageError("schema: " + "; ".join(f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()[:5]))
+                def one(x):
+                    loc = ".".join(map(str, x["loc"]))
+                    if x["type"] in ("enum", "literal_error"):   # the full allowed list is in the prompt; report the bad value
+                        return f"{loc}: invalid value {x.get('input')!r} (must be exactly one of the allowed values listed in your instructions)"
+                    return f"{loc}: {x['msg']}"[:220]
+                raise MessageError("schema: " + "; ".join(one(x) for x in e.errors()[:5]))
             raise MessageError(f"not valid JSON: {e}")
         if out.type not in allowed:
             raise MessageError(f"{out.type.value} is not allowed in turn {turn}; allowed: {[t.value for t in allowed]}")
@@ -218,7 +264,9 @@ class Coordinator:
                         self._planner = Planner(self.sc)
                     plan = materialise(self.sc, out.plan_spec, self._planner)
                 except ValueError as e:
+                    self._tool(role, turn, seq, "materialise_plan_spec", {"ok": False, "error": str(e)[:200]})
                     raise MessageError(f"plan_spec rejected: {e}")
+                self._tool(role, turn, seq, "materialise_plan_spec", {"ok": True, "proposal_id": plan.proposal_id})
                 origin = "materialised_from_spec"
             pid = plan.proposal_id
             ref_metrics = by_id[out.referenced_proposal_id].metrics if out.referenced_proposal_id else None
@@ -256,6 +304,7 @@ class Coordinator:
                              plan_json=plan.model_dump_json(), digest=plan_digest(plan), origin=msg.plan_origin or "",
                              validation=validate_plan(self.sc, plan), metrics=metrics)
         self.proposals.append(rec)
+        self._validated("registration", rec.proposal_id, rec.validation)
         self._event("proposal_registered", {
             "proposal_id": rec.proposal_id, "version_no": rec.version_no, "proposer": rec.proposer.value, "seq": rec.seq,
             "digest": rec.digest, "valid": rec.validation.passed,
@@ -269,9 +318,13 @@ class Coordinator:
         self.messages.append(msg)
         self.standing[role] = list(msg.conditions)
         # decision record: how this agent's position moved, with the measurable consequence recomputed by us
-        prev_rec = next((p for p in self.proposals if prev_pos and p.proposal_id == prev_pos.proposal_id), None)
-        prev_id = prev_pos.proposal_id if prev_pos else (msg.referenced_proposal_id or None)
-        changed = bool(prev_pos and (prev_pos.proposal_id != msg.proposal_id or prev_pos.type != msg.type))
+        if msg.referenced_proposal_id:   # a counter-offer is measured against the proposal it counters (what was on the table)
+            prev_id = msg.referenced_proposal_id
+            changed = True
+        else:                            # otherwise against this agent's own previous position
+            prev_id = prev_pos.proposal_id if prev_pos else None
+            changed = bool(prev_pos and (prev_pos.proposal_id != msg.proposal_id or prev_pos.type != msg.type))
+        prev_rec = next((p for p in self.proposals if p.proposal_id == prev_id), None)
         observed = metric_delta(prev_rec.metrics, rec.metrics) if (prev_rec and prev_rec.proposal_id != rec.proposal_id) else {}
         dec = DecisionRecord(session_id=self.sid, seq=msg.seq, sender=role, type=msg.type, proposal_id=msg.proposal_id,
                              previous_proposal_id=prev_id, changed_preference=changed,
@@ -290,7 +343,7 @@ class Coordinator:
     def _no_candidate_detail(self) -> str:
         if not self.proposals:
             return "No agent proposal was registered in turns 1-2."
-        bits = [f"{p.proposal_id} ({p.proposer.value}): " + ", ".join(sorted({r.constraint_id for r in p.validation.failures})[:4])
+        bits = [f"{p.proposal_id} ({p.proposer.value}): " + ", ".join(sorted({r.constraint_id for r in p.validation.failures})[:8])
                 for p in self.proposals[:4]]
         return "No proposal from turns 1-2 passed validation. Failed constraints: " + " | ".join(bits)
 
@@ -312,6 +365,7 @@ class Coordinator:
         for rec_row in rows:
             rec = next(p for p in self.proposals if p.proposal_id == rec_row["proposal_id"])
             fresh = validate_plan(self.sc, rec.plan)  # independent validation of the immutable stored plan before freezing
+            self._validated("freeze", rec.proposal_id, fresh)
             if fresh.passed:
                 self.frozen = rec
                 self._event("candidate_frozen", {"proposal_id": rec.proposal_id, "digest": rec.digest, "rule": FREEZE_RULE,
@@ -346,6 +400,7 @@ class Coordinator:
             raise _Abort(FallbackReason.CONSENSUS_REVALIDATION_FAILED, "frozen plan digest / scenario version changed")
         self._check_guard()
         report = validate_plan(self.sc, plan)
+        self._validated("final_revalidation", plan.proposal_id, report)
         if not report.passed:
             raise _Abort(FallbackReason.CONSENSUS_REVALIDATION_FAILED,
                          "final re-validation failed: " + ", ".join(sorted({r.constraint_id for r in report.failures})))
@@ -372,7 +427,8 @@ class Coordinator:
         res = NegotiationResult(
             session_id=self.sid, mode=self.client.mode, model_name=self.client.model_name, scenario_id=self.sc.scenario_id,
             scenario_version=self.version, status=status, turns_completed=complete_turns, messages=self.messages,
-            proposals=self.proposals, attempts=self.attempts, decisions=self.decisions,
+            proposals=self.proposals, attempts=self.attempts, decisions=self.decisions, reference_plan=self.reference,
+            reference_validation=self.reference_validation, tool_calls=self.tool_calls, validations=self.validations,
             frozen_proposal_id=self.frozen.proposal_id if self.frozen else None, freeze_ranking=self.freeze_ranking,
             votes=self.votes, final_plan=final_plan, final_validation=final_validation, fallback=fallback,
             fallback_reason=reason, fallback_detail=detail, invalidation_detail=invalidation,

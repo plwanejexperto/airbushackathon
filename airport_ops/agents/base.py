@@ -6,16 +6,18 @@ import json
 import re
 from typing import Callable, Optional
 
-from ..messages import (AgentOutput, AgentRole, Condition, ConditionField, ConditionOp, MessageType, PlanSpec,
+from ..messages import (FLIGHT_ID_FIELDS, FLIGHT_NUMERIC, PLAN_NUMERIC, AgentOutput, AgentRole, Condition, ConditionField,
+                        ConditionOp, MessageType, PlanSpec,
                         ReasonCode, SPEAKING_ORDER, Tradeoff, TradeoffMetric)
+from ..canonical import canonical_metrics, policy_text, quantise
 from ..metrics import all_satisfied, evaluate_conditions
 from ..negotiation_types import AgentContext, ProposalRecord
 from ..tools import Candidate, best_for, candidate_pool
 
-CONDITION_FIELDS_DOC = {
-    "per flight, numeric (flight_id required)": [f.value for f in ConditionField][:9],
-    "per flight, identifier (op == or !=, string value)": ["gate_id", "runway_id", "ground_crew_id"],
-    "whole plan, numeric (omit flight_id)": [f.value for f in ConditionField][12:],
+CONDITION_FIELDS_DOC = {   # derived from the schema sets (no index slicing): exactly what Condition accepts
+    "per flight, numeric (flight_id required)": [f.value for f in ConditionField if f in FLIGHT_NUMERIC],
+    "per flight, identifier (op == or !=, string value)": [f.value for f in ConditionField if f in FLIGHT_ID_FIELDS],
+    "whole plan, numeric (omit flight_id)": [f.value for f in ConditionField if f in PLAN_NUMERIC],
 }
 
 COMMON_PROTOCOL = f"""\
@@ -23,6 +25,9 @@ You are one of three INDEPENDENT agents negotiating a recovery plan for one disr
 and two competing flights, at one airport. The agents are ATC, PILOT and GROUND. The PILOT represents ONLY the selected
 historical flight. The two competing flights are simulated traffic with fixed, deterministic constraints and have no agent.
 You see only your own domain plus the structured messages the other agents have sent.
+The historical disruption record (a real flights.csv row) is CONTEXT ONLY: its delay minutes are not a remaining holding time and
+are not something to "recover"; all negotiated times are simulated minutes from scenario start. `initial_reference_plan` is the
+simulated baseline (nominal ETAs, original assignments); revisions are measured against it.
 
 NON-NEGOTIABLE RULES
 - Hard constraints (runway closures, wake separation, capacity, taxiway blockages, gate compatibility/overlap, crew duty
@@ -44,9 +49,12 @@ PROTOCOL
      COUNTER_PROPOSE also needs `referenced_proposal_id` (the proposal you counter). Never set proposal_id on these.
   ACCEPT / REJECT: `proposal_id` = the exact proposal you answer. No plan. REJECT needs >=1 reason code.
   conditions: optional list of {{"field","op","value","flight_id"?}} that must hold for the proposal you accept/offer.
-     They are evaluated mechanically; an ACCEPT whose conditions are not all satisfied is NOT a final acceptance.
+     They are evaluated mechanically against the EXACT proposal using the SAME per-field precision as the numbers shown to you
+     ({policy_text()}); an ACCEPT whose conditions are not all satisfied is NOT a final acceptance. Before you ACCEPT, check each
+     condition you attach against that proposal's numbers in proposals_so_far, and drop or loosen any it does not meet.
      Allowed fields: {json.dumps(CONDITION_FIELDS_DOC)}; ops: {[o.value for o in ConditionOp]}.
-  tradeoff: optional {{"metric","flight_id"?,"before","after","because"}} - the measurable change behind a revised
+  tradeoff: optional {{"metric","flight_id"?,"before","after","because"}} (`because` MUST be exactly ONE reason code from
+     the list above) - the measurable change behind a revised
      position (metrics: {[m.value for m in TradeoffMetric]}). The coordinator recomputes the real numbers.
 """
 
@@ -57,9 +65,11 @@ def build_system(instructions: str) -> str:
 
 def _plan_summary(plan_json: str) -> list[dict]:
     d = json.loads(plan_json)
-    return [{"flight": f["flight_id"], "runway": f["runway_id"], "landing": round(f["landing_min"], 1),
-             "gate": f["gate_id"], "gate_in": round(f["gate_in_min"], 1), "service": [round(f["service_start_min"], 1),
-             round(f["service_end_min"], 1)], "ground_crew": f["ground_crew_id"]} for f in d["flights"]]
+    q = quantise
+    return [{"flight": f["flight_id"], "runway": f["runway_id"], "landing_min": q("landing_min", f["landing_min"]),
+             "gate": f["gate_id"], "gate_in_min": q("gate_in_min", f["gate_in_min"]),
+             "service_start_min": q("service_start_min", f["service_start_min"]),
+             "service_end_min": q("service_end_min", f["service_end_min"]), "ground_crew": f["ground_crew_id"]} for f in d["flights"]]
 
 
 def proposals_view(ctx: AgentContext) -> list[dict]:
@@ -70,9 +80,8 @@ def proposals_view(ctx: AgentContext) -> list[dict]:
                   "why": r.explanation[:200]} for r in p.validation.failures][:6]
         out.append({"proposal_id": p.proposal_id, "version": p.version_no, "proposed_by": p.proposer.value, "turn": p.turn,
                     "valid": p.validation.passed, "failed_constraints": fails, "plan": _plan_summary(p.plan_json),
-                    "metrics_plan": {k: round(v, 2) for k, v in p.metrics["plan"].items()},
-                    "metrics_selected_flight": {k: (round(v, 2) if isinstance(v, float) else v)
-                                                for k, v in p.metrics["flights"].get(ctx.scenario.simulated.flights[0].flight_id, {}).items()}})
+                    "metrics_plan": canonical_metrics(p.metrics)["plan"],
+                    "metrics_selected_flight": canonical_metrics(p.metrics)["flights"].get(ctx.scenario.simulated.flights[0].flight_id, {})})
     return out
 
 
@@ -90,6 +99,7 @@ def build_prompt(ctx: AgentContext, domain_view: dict, tool_results: dict) -> st
         "your_turn": {"turn": ctx.turn, "of": 3, "message_seq": ctx.seq, "of_messages": 9,
                       "allowed_message_types": [t.value for t in ctx.allowed_types]},
         "historical_disruption_record": ctx.historical.model_dump(mode="json"),
+        "initial_reference_plan": ctx.reference,
         "your_domain": domain_view,
         "tool_results": tool_results,
         "other_agents_standing_conditions": {r.value: [c.model_dump(mode="json", exclude_none=True) for c in cs]
@@ -100,7 +110,7 @@ def build_prompt(ctx: AgentContext, domain_view: dict, tool_results: dict) -> st
     if ctx.frozen is not None:
         body["frozen_candidate"] = {"proposal_id": ctx.frozen.proposal_id, "plan": _plan_summary(ctx.frozen.plan_json),
                                     "valid": ctx.frozen.validation.passed,
-                                    "metrics_plan": {k: round(v, 2) for k, v in ctx.frozen.metrics["plan"].items()},
+                                    "metrics_plan": canonical_metrics(ctx.frozen.metrics)["plan"],
                                     "instruction": "Answer ACCEPT or REJECT with proposal_id = this id. No plan changes."}
     if ctx.repair_error:
         body["REPAIR_REQUIRED"] = ("Your previous reply was rejected: " + ctx.repair_error +
@@ -138,6 +148,24 @@ def _failed_text(results) -> str:
     bad = [r for r in results if r.satisfied is not True]
     return "; ".join(f"{r.condition.field.value}{('['+r.condition.flight_id+']') if r.condition.flight_id else ''} "
                      f"{r.condition.op.value} {r.condition.value} (observed {r.observed})" for r in bad[:3])
+
+
+_REASON_FOR_FIELD = {
+    ConditionField.CONTINGENCY_MARGIN_KG: ReasonCode.FUEL_LIMIT, ConditionField.RESERVE_MARGIN_KG: ReasonCode.FUEL_LIMIT,
+    ConditionField.CONNECTION_MISS_MIN: ReasonCode.CONNECTION_PRESERVATION, ConditionField.LANDING_DELAY_MIN: ReasonCode.DELAY_MINIMISATION,
+    ConditionField.WEIGHTED_LANDING_DELAY: ReasonCode.DELAY_MINIMISATION, ConditionField.GROUND_OVERTIME_MIN: ReasonCode.OVERTIME,
+    ConditionField.TOTAL_SERVICE_WAIT_MIN: ReasonCode.CREW_AVAILABILITY,
+}
+
+
+def _violation_reasons(results) -> list[ReasonCode]:
+    """Reason codes for the agent's OWN conditions that the countered plan breaks (evidence-driven, deterministic order)."""
+    out: list[ReasonCode] = []
+    for r in results:
+        code = _REASON_FOR_FIELD.get(r.condition.field)
+        if r.satisfied is not True and code and code not in out:
+            out.append(code)
+    return out
 
 
 def scripted_negotiate(ctx: AgentContext, role: AgentRole, own: list[Condition], *, metrics: list[TradeoffMetric],
@@ -195,8 +223,14 @@ def scripted_negotiate(ctx: AgentContext, role: AgentRole, own: list[Condition],
     moved = [m for m in metrics if abs(_metric_value(cand.metrics, m, flight) - _metric_value(latest.metrics, m, flight)) > 1e-6]
     metric = moved[0] if moved else metric
     before, after = _metric_value(latest.metrics, metric, flight), _metric_value(cand.metrics, metric, flight)
+    broken = evaluate_conditions(own, latest.metrics)
+    why = _violation_reasons(broken)
+    codes = (why + [r for r in reasons if r not in why]) if why else (
+        [ReasonCode.VALIDATION_FAILED] + reasons if not latest.validation.passed else reasons)
+    cause = (f" {latest.proposal_id} breaks my limit(s): {_failed_text(broken)}." if why else
+             f" {latest.proposal_id} fails validation." if not latest.validation.passed else "")
     return _dump(AgentOutput(
         type=MessageType.COUNTER_PROPOSE, referenced_proposal_id=latest.proposal_id, plan_spec=cand.spec, conditions=own,
-        reason_codes=reasons, tradeoff=Tradeoff(metric=metric, flight_id=flight, before=before, after=after, because=reasons[0]),
-        explanation=f"{label}: counter to {latest.proposal_id}; {metric.value} {before:.1f} -> {after:.1f} while keeping "
-                    f"other agents' stated limits where possible."))
+        reason_codes=codes, tradeoff=Tradeoff(metric=metric, flight_id=flight, before=before, after=after, because=codes[0]),
+        explanation=(f"{label}: counter to {latest.proposal_id}; {metric.value} {before:.1f} -> {after:.1f}.{cause} "
+                     f"Keeping other agents' stated limits where possible.")[:600]))

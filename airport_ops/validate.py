@@ -210,9 +210,9 @@ def _landing(ix: _Ix, fps: list[FlightPlan], c: _Collector):
                     req_s = max(req_s, tmin_s)
                 gap_s = (y.landing_min - x.landing_min) * 60.0
                 c.check("WAKE-SEP", gap_s >= req_s - TOL * 60,
-                        lambda: (f"{x.flight_id}({lc.value}) -> {y.flight_id}({fc_.value}) on {rid}: gap {gap_s:.0f}s, "
-                                 f"required {req_s:.0f}s [{label}: {nm:g} nm @ {a.approach_speed_kt:g} kt = "
-                                 f"{nm / a.approach_speed_kt * 3600:.0f}s; workbook floor {tmin_s:g}s]"),
+                        lambda: (f"{x.flight_id}({lc.value}) -> {y.flight_id}({fc_.value}) on {rid}: gap {gap_s:.3f}s, "
+                                 f"required {req_s:.3f}s [{label}: {nm:g} nm @ {a.approach_speed_kt:g} kt = "
+                                 f"{nm / a.approach_speed_kt * 3600:.3f}s; workbook floor {tmin_s:g}s]"),
                         y.flight_id, rid)
 
     # airport-wide movement capacity: workbook max_runway_ops_per_hour (modelled flights only)
